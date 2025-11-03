@@ -8,51 +8,66 @@ import (
 )
 
 var (
-	ErrInvalidStopLossPercentage = errors.New("invalid stop loss percentage")
+	errStopLossRateInvalid = errors.New("stop loss rate must be between 0 and 1")
 )
 
 type fixedPercentStopLoss struct {
-	LastPrice   decimal.Decimal
-	stopLossPct decimal.Decimal
+	stoploss.BaseStopLoss
 	stopLoss    decimal.Decimal
-	triggered   bool
-	callback    DefaultCallback
+	stopLossPct decimal.Decimal
+	LastPrice   decimal.Decimal
 }
 
-func NewFixedPercentStopLoss(entryPrice, stopLossPct decimal.Decimal, callback DefaultCallback) (stoploss.FixedStopLoss, error) {
+func NewFixedPercentStopLoss(entryPrice, stopLossPct decimal.Decimal, callback stoploss.DefaultCallback) (stoploss.FixedStopLoss, error) {
 	if stopLossPct.IsNegative() || stopLossPct.GreaterThan(decimal.NewFromInt(1)) {
-		return nil, ErrInvalidStopLossPercentage
+		return nil, errStopLossRateInvalid
 	}
 	s := &fixedPercentStopLoss{
 		LastPrice:   entryPrice,
 		stopLossPct: stopLossPct,
-		callback:    callback,
+		stopLoss:    entryPrice.Mul(decimal.NewFromInt(1).Sub(stopLossPct)),
+		BaseStopLoss: stoploss.BaseStopLoss{
+			Active:   true,
+			Callback: callback,
+		},
 	}
-	s.stopLoss = entryPrice.Mul(decimal.NewFromInt(1).Sub(stopLossPct))
 	return s, nil
 }
 
-func (f *fixedPercentStopLoss) CalculateStopLoss(entryPrice decimal.Decimal) decimal.Decimal {
-	return f.stopLoss
-}
-
-func (f *fixedPercentStopLoss) ShouldTriggerStopLoss(currentPrice decimal.Decimal) bool {
-	if currentPrice.LessThanOrEqual(f.stopLoss) {
-		f.OnTriggered("Fixed Percent Stop Loss Triggered")
-		return true
+func (f *fixedPercentStopLoss) CalculateStopLoss(entryPrice decimal.Decimal) (decimal.Decimal, error) {
+	if !f.Active {
+		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
-	return false
+	return f.stopLoss, nil
 }
 
-func (f *fixedPercentStopLoss) GetStopLoss() decimal.Decimal { return f.stopLoss }
+func (f *fixedPercentStopLoss) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
+	if !f.Active {
+		return false, stoploss.ErrStatusInvalid
+	}
+	if currentPrice.LessThanOrEqual(f.stopLoss) {
+		err := f.Trigger("Fixed Percent Stop Loss Triggered")
+		if err != nil {
+			return true, stoploss.ErrCallBackFail
+		}
+		return true, nil
+	}
+	return false, nil
+}
 
-func (f *fixedPercentStopLoss) ReSet(currentPrice decimal.Decimal) {
+func (f *fixedPercentStopLoss) GetStopLoss() (decimal.Decimal, error) {
+	if !f.Active {
+		return decimal.Zero, stoploss.ErrStatusInvalid
+	}
+	return f.stopLoss, nil
+}
+
+func (f *fixedPercentStopLoss) ReSet(currentPrice decimal.Decimal) error {
+	if !f.Active {
+		return stoploss.ErrStatusInvalid
+	}
 	f.LastPrice = currentPrice
 	f.stopLoss = currentPrice.Mul(decimal.NewFromInt(1).Sub(f.stopLossPct))
-}
-
-func (f *fixedPercentStopLoss) OnTriggered(reason string) {
-	if f.callback != nil {
-		f.callback(reason)
-	}
+	f.Active = true
+	return nil
 }
