@@ -1,6 +1,8 @@
 package stoploss
 
-import "github.com/shopspring/decimal"
+import (
+	"github.com/shopspring/decimal"
+)
 
 type TriggerMode int
 
@@ -30,56 +32,89 @@ func (c *CompositeStopLoss) AddCondition(cond StopLossCond) {
 }
 
 func (c *CompositeStopLoss) ShouldTriggerStopLoss(currentPrice decimal.Decimal, timestamp int64) bool {
-	triggered := 0
+	count := 0
 	total := len(c.conditions) + len(c.conditionsT)
 
 	for _, cond := range c.conditions {
-		if cond.ShouldTriggerStopLoss(currentPrice) {
+		if triggered, _ := cond.ShouldTriggerStopLoss(currentPrice); triggered {
 			if c.mode == TriggerAny {
 				return true
 			}
-			triggered++
+			count++
 		} else if c.mode == TriggerAll {
 			return false
 		}
 	}
 
 	for _, cond := range c.conditionsT {
-		if cond.ShouldTriggerStopLoss(currentPrice, timestamp) {
+		if triggered, _ := cond.ShouldTriggerStopLoss(currentPrice, timestamp); triggered {
 			if c.mode == TriggerAny {
 				return true
 			}
-			triggered++
+			count++
 		} else if c.mode == TriggerAll {
 			return false
 		}
 	}
-
-	return c.mode == TriggerAll && triggered == total
+	return c.mode == TriggerAll && count == total
 }
 
-func (c *CompositeStopLoss) GetStopLoss() decimal.Decimal {
-	var min decimal.Decimal
+func (c *CompositeStopLoss) GetMinStopLoss() (decimal.Decimal, error) {
+	return c.getStopLoss(func(a, b decimal.Decimal) bool {
+		return a.LessThan(b)
+	})
+}
+
+func (c *CompositeStopLoss) GetMaxStopLoss() (decimal.Decimal, error) {
+	return c.getStopLoss(func(a, b decimal.Decimal) bool {
+		return a.GreaterThan(b)
+	})
+}
+func (c *CompositeStopLoss) ReSet(currentPrice decimal.Decimal) {
+	for _, cond := range c.conditions {
+		err := cond.ReSet(currentPrice)
+		if err != nil {
+			// Handle error
+		}
+	}
+	for _, cond := range c.conditionsT {
+		err := cond.ReSet(currentPrice)
+		if err != nil {
+			// Handle error
+		}
+	}
+}
+
+func (c *CompositeStopLoss) getStopLoss(
+	cmp func(a, b decimal.Decimal) bool,
+) (decimal.Decimal, error) {
+	var result decimal.Decimal
 	init := false
 
 	for _, cond := range c.conditions {
-		stop := cond.GetStopLoss()
-		if !init || stop.LessThan(min) {
-			min = stop
+		stop, err := cond.GetStopLoss()
+		if err != nil {
+			continue
+		}
+		if !init || cmp(stop, result) {
+			result = stop
 			init = true
 		}
 	}
 
 	for _, cond := range c.conditionsT {
-		stop := cond.GetStopLoss()
-		if !init || stop.LessThan(min) {
-			min = stop
+		stop, err := cond.GetStopLoss()
+		if err != nil {
+			continue
+		}
+		if !init || cmp(stop, result) {
+			result = stop
 			init = true
 		}
 	}
 
 	if !init {
-		return decimal.Zero
+		return decimal.Zero, ErrStatusInvalid
 	}
-	return min
+	return result, nil
 }
