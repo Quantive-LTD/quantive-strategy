@@ -60,12 +60,12 @@ type StopLossCond interface {
 
 type DefaultCallback func(reason string) error
 
-type BaseStopLoss struct {
+type BaseResolver struct {
 	Active   bool
 	Callback DefaultCallback
 }
 
-func (b *BaseStopLoss) Deactivate() error {
+func (b *BaseResolver) Deactivate() error {
 	if !b.Active {
 		return ErrStatusInvalid
 	}
@@ -73,7 +73,7 @@ func (b *BaseStopLoss) Deactivate() error {
 	return nil
 }
 
-func (b *BaseStopLoss) Trigger(reason string) error {
+func (b *BaseResolver) Trigger(reason string) error {
 	if !b.Active {
 		return ErrStatusInvalid
 	}

@@ -12,7 +12,7 @@ var (
 )
 
 type trailingTimeBased struct {
-	stoploss.BaseStopLoss
+	stoploss.BaseResolver
 	stopLossRate  decimal.Decimal
 	lastAdjusted  decimal.Decimal
 	stopLoss      decimal.Decimal
@@ -32,7 +32,7 @@ func NewTrailingTimeBased(entryPrice, stopLossRate decimal.Decimal, timeThreshol
 		lastAdjusted:  entryPrice,
 		stopLoss:      entryPrice.Mul(decimal.NewFromInt(1).Sub(stopLossRate)),
 		timeThreshold: timeThreshold,
-		BaseStopLoss: stoploss.BaseStopLoss{
+		BaseResolver: stoploss.BaseResolver{
 			Active:   true,
 			Callback: callback,
 		},
@@ -59,7 +59,7 @@ func (t *trailingTimeBased) ShouldTriggerStopLoss(currentPrice decimal.Decimal, 
 		if t.triggerTime == 0 {
 			t.triggerTime = currentTimestamp
 		} else if currentTimestamp-t.triggerTime >= t.timeThreshold {
-			err := t.Trigger("Trailing Time-Based Stop Loss Triggered")
+			err := t.Trigger(stoploss.TRIGGERED_REASON_TIMED_TRAILING_STOPLOSS)
 			if err != nil {
 				return true, stoploss.ErrCallBackFail
 			}

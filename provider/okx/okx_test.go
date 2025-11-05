@@ -46,7 +46,7 @@ func TestGetKlines(t *testing.T) {
 			Quote:    currency.USDTSymbol,
 			Category: trade.SPOT,
 		}
-		intervals, err := o.GetKlines(context.Background(), pair, "1h", 10)
+		intervals, err := o.GetKlines(context.Background(), pair, "1m", 10)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
