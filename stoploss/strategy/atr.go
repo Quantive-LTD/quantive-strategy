@@ -12,7 +12,7 @@ var (
 )
 
 type atr struct {
-	stoploss.BaseStopLoss
+	stoploss.BaseResolver
 	stopLoss   decimal.Decimal
 	entryPrice decimal.Decimal
 	multiplier decimal.Decimal
@@ -28,7 +28,7 @@ func NewATRStop(entryPrice, ATR, k decimal.Decimal, callback stoploss.DefaultCal
 		currentATR: ATR,
 		multiplier: k,
 		stopLoss:   entryPrice.Sub(ATR.Mul(k)),
-		BaseStopLoss: stoploss.BaseStopLoss{
+		BaseResolver: stoploss.BaseResolver{
 			Active:   true,
 			Callback: callback,
 		},
@@ -56,7 +56,7 @@ func (a *atr) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) 
 		return false, stoploss.ErrStatusInvalid
 	}
 	if currentPrice.LessThanOrEqual(a.stopLoss) {
-		err := a.Trigger("ATR Stop Loss Triggered")
+		err := a.Trigger(stoploss.TRIGGERED_REASON_FIXED_ATR_STOPLOSS)
 		if err != nil {
 			return true, stoploss.ErrCallBackFail
 		}

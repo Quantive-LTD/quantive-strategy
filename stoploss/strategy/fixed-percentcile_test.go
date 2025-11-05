@@ -16,7 +16,7 @@ var fixedPercentCallback = func(reason string) error {
 func TestFixed(t *testing.T) {
 	entryPrice := decimal.NewFromFloat(100.0)
 	stopLossPct := decimal.NewFromFloat(0.1) // 10%
-	fixedStopLoss, err := NewFixedPercentStopLoss(entryPrice, stopLossPct, callback)
+	fixedStopLoss, err := NewFixedPercent(entryPrice, stopLossPct, callback)
 	if err != nil {
 		t.Fatalf("Failed to create FixedPercentStopLoss: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestFixedPercentStopLoss_NewFixedPercentStopLoss(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := NewFixedPercentStopLoss(tt.entryPrice, tt.stopLossPct, fixedPercentCallback)
+			s, err := NewFixedPercent(tt.entryPrice, tt.stopLossPct, fixedPercentCallback)
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
@@ -155,7 +155,7 @@ func TestFixedPercentStopLoss_CalculateStopLoss(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := NewFixedPercentStopLoss(tt.entryPrice, tt.stopLossPct, nil)
+			s, err := NewFixedPercent(tt.entryPrice, tt.stopLossPct, nil)
 			if err != nil {
 				t.Fatalf("Failed to create stop loss: %v", err)
 			}
@@ -179,7 +179,7 @@ func TestFixedPercentStopLoss_ShouldTriggerStopLoss(t *testing.T) {
 	entryPrice := d(100)
 	stopLossPct := d(0.05) // 5%
 
-	s, err := NewFixedPercentStopLoss(entryPrice, stopLossPct, nil)
+	s, err := NewFixedPercent(entryPrice, stopLossPct, nil)
 	if err != nil {
 		t.Fatalf("Failed to create stop loss: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestFixedPercentStopLoss_ShouldTriggerStopLoss(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// 重新創建避免已觸發狀態
-			s, _ := NewFixedPercentStopLoss(entryPrice, stopLossPct, nil)
+			s, _ := NewFixedPercent(entryPrice, stopLossPct, nil)
 
 			triggered, err := s.ShouldTriggerStopLoss(tt.currentPrice)
 			if err != nil {
@@ -223,7 +223,7 @@ func TestFixedPercentStopLoss_GetStopLoss(t *testing.T) {
 	entryPrice := d(100)
 	stopLossPct := d(0.05)
 
-	s, err := NewFixedPercentStopLoss(entryPrice, stopLossPct, nil)
+	s, err := NewFixedPercent(entryPrice, stopLossPct, nil)
 	if err != nil {
 		t.Fatalf("Failed to create stop loss: %v", err)
 	}
@@ -243,7 +243,7 @@ func TestFixedPercentStopLoss_ReSet(t *testing.T) {
 	entryPrice := d(100)
 	stopLossPct := d(0.05)
 
-	s, err := NewFixedPercentStopLoss(entryPrice, stopLossPct, nil)
+	s, err := NewFixedPercent(entryPrice, stopLossPct, nil)
 	if err != nil {
 		t.Fatalf("Failed to create stop loss: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestFixedPercentStopLoss_Deactivate(t *testing.T) {
 	entryPrice := d(100)
 	stopLossPct := d(0.05)
 
-	s, err := NewFixedPercentStopLoss(entryPrice, stopLossPct, nil)
+	s, err := NewFixedPercent(entryPrice, stopLossPct, nil)
 	if err != nil {
 		t.Fatalf("Failed to create stop loss: %v", err)
 	}
@@ -320,7 +320,7 @@ func TestFixedPercentStopLoss_WithHistoricalData_DownTrend(t *testing.T) {
 		return nil
 	}
 
-	s, err := NewFixedPercentStopLoss(entryPrice, stopLossPct, triggerCallback)
+	s, err := NewFixedPercent(entryPrice, stopLossPct, triggerCallback)
 	if err != nil {
 		t.Fatalf("Failed to create stop loss: %v", err)
 	}
@@ -365,7 +365,7 @@ func TestFixedPercentStopLoss_WithHistoricalData_Consolidation(t *testing.T) {
 	entryPrice := entryData.Close
 	stopLossPct := d(0.05) // 5% 止損
 
-	s, err := NewFixedPercentStopLoss(entryPrice, stopLossPct, nil)
+	s, err := NewFixedPercent(entryPrice, stopLossPct, nil)
 	if err != nil {
 		t.Fatalf("Failed to create stop loss: %v", err)
 	}
@@ -406,7 +406,7 @@ func TestFixedPercentStopLoss_WithHistoricalData_UpTrend(t *testing.T) {
 	entryPrice := entryData.Close
 	stopLossPct := d(0.05) // 5% 止損
 
-	s, err := NewFixedPercentStopLoss(entryPrice, stopLossPct, nil)
+	s, err := NewFixedPercent(entryPrice, stopLossPct, nil)
 	if err != nil {
 		t.Fatalf("Failed to create stop loss: %v", err)
 	}
@@ -455,7 +455,7 @@ func TestFixedPercentStopLoss_WithHistoricalData_GradualDecline(t *testing.T) {
 		return nil
 	}
 
-	s, err := NewFixedPercentStopLoss(entryPrice, stopLossPct, triggerCallback)
+	s, err := NewFixedPercent(entryPrice, stopLossPct, triggerCallback)
 	if err != nil {
 		t.Fatalf("Failed to create stop loss: %v", err)
 	}
@@ -507,7 +507,7 @@ func TestFixedPercentStopLoss_WithHistoricalData_SharpDrop(t *testing.T) {
 		return nil
 	}
 
-	s, err := NewFixedPercentStopLoss(entryPrice, stopLossPct, triggerCallback)
+	s, err := NewFixedPercent(entryPrice, stopLossPct, triggerCallback)
 	if err != nil {
 		t.Fatalf("Failed to create stop loss: %v", err)
 	}
@@ -546,7 +546,7 @@ func TestFixedPercentStopLoss_CompareStopLossPercentages(t *testing.T) {
 
 	for _, pct := range percentages {
 		t.Run(fmt.Sprintf("%.0f%% stop loss", pct.Mul(d(100)).InexactFloat64()), func(t *testing.T) {
-			s, _ := NewFixedPercentStopLoss(entryPrice, pct, nil)
+			s, _ := NewFixedPercent(entryPrice, pct, nil)
 			stopLoss, _ := s.GetStopLoss()
 
 			t.Logf("Stop Loss: %v (%.2f%%)", stopLoss, pct.Mul(d(100)).InexactFloat64())
@@ -576,7 +576,7 @@ func BenchmarkNewFixedPercentStopLoss(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = NewFixedPercentStopLoss(entryPrice, stopLossPct, nil)
+		_, _ = NewFixedPercent(entryPrice, stopLossPct, nil)
 	}
 }
 
@@ -584,7 +584,7 @@ func BenchmarkNewFixedPercentStopLoss(b *testing.B) {
 func BenchmarkFixedPercentStopLoss_CalculateStopLoss(b *testing.B) {
 	entryPrice := d(100)
 	stopLossPct := d(0.05)
-	s, _ := NewFixedPercentStopLoss(entryPrice, stopLossPct, nil)
+	s, _ := NewFixedPercent(entryPrice, stopLossPct, nil)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -600,7 +600,7 @@ func BenchmarkFixedPercentStopLoss_ShouldTriggerStopLoss(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s, _ := NewFixedPercentStopLoss(entryPrice, stopLossPct, nil)
+		s, _ := NewFixedPercent(entryPrice, stopLossPct, nil)
 		_, _ = s.ShouldTriggerStopLoss(currentPrice)
 	}
 }
@@ -609,7 +609,7 @@ func BenchmarkFixedPercentStopLoss_ShouldTriggerStopLoss(b *testing.B) {
 func BenchmarkFixedPercentStopLoss_ReSet(b *testing.B) {
 	entryPrice := d(100)
 	stopLossPct := d(0.05)
-	s, _ := NewFixedPercentStopLoss(entryPrice, stopLossPct, nil)
+	s, _ := NewFixedPercent(entryPrice, stopLossPct, nil)
 	newPrice := d(110)
 
 	b.ResetTimer()

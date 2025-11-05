@@ -6,7 +6,7 @@ import (
 )
 
 type trailing struct {
-	stoploss.BaseStopLoss
+	stoploss.BaseResolver
 	stopLossRate decimal.Decimal
 	lastAdjusted decimal.Decimal
 	stopLoss     decimal.Decimal
@@ -20,7 +20,7 @@ func NewTrailing(entryPrice, stopLossRate decimal.Decimal, callback stoploss.Def
 		stopLossRate: stopLossRate,
 		lastAdjusted: entryPrice,
 		stopLoss:     entryPrice.Mul(decimal.NewFromInt(1).Sub(stopLossRate)),
-		BaseStopLoss: stoploss.BaseStopLoss{
+		BaseResolver: stoploss.BaseResolver{
 			Active:   true,
 			Callback: callback,
 		},
@@ -43,7 +43,7 @@ func (t *trailing) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, er
 		return false, stoploss.ErrStatusInvalid
 	}
 	if currentPrice.LessThanOrEqual(t.stopLoss) {
-		err := t.Trigger("Trailing Stop Loss Triggered")
+		err := t.Trigger(stoploss.TRIGGERED_REASON_FIXED_TRAILING_STOPLOSS)
 		if err != nil {
 			return true, stoploss.ErrCallBackFail
 		}
