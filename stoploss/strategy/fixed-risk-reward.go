@@ -1,3 +1,18 @@
+// Copyright 2024 Perry. All rights reserved.
+
+// Licensed MIT License
+
+// Licensed under the MIT License (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// https://opensource.org/licenses/MIT
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package strategy
 
 import (
@@ -35,18 +50,14 @@ func NewRiskRewardRatio(entryPrice, riskRatio, rewardRatio decimal.Decimal, call
 	return s, nil
 }
 
-func (r *riskRewardRatio) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+func (r *riskRewardRatio) Calculate(currentPrice decimal.Decimal) (decimal.Decimal, decimal.Decimal, error) {
 	if !r.Active {
-		return decimal.Zero, stoploss.ErrStatusInvalid
+		return decimal.Zero, decimal.Zero, stoploss.ErrStatusInvalid
 	}
-	return r.stopLoss, nil
-}
-
-func (r *riskRewardRatio) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
-	if !r.Active {
-		return decimal.Zero, stoploss.ErrStatusInvalid
-	}
-	return r.takeProfit, nil
+	r.LastPrice = currentPrice
+	r.stopLoss = currentPrice.Mul(decimal.NewFromInt(1).Sub(r.riskRatio))
+	r.takeProfit = currentPrice.Mul(decimal.NewFromInt(1).Add(r.rewardRatio))
+	return r.stopLoss, r.takeProfit, nil
 }
 
 func (r *riskRewardRatio) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {

@@ -1,3 +1,18 @@
+// Copyright 2024 Perry. All rights reserved.
+
+// Licensed MIT License
+
+// Licensed under the MIT License (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// https://opensource.org/licenses/MIT
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package strategy
 
 import (
@@ -22,6 +37,8 @@ type structureSwing struct {
 	priceHistory   []decimal.Decimal
 	lastSwingLow   decimal.Decimal
 	lastSwingHigh  decimal.Decimal
+	stopPct        decimal.Decimal
+	profitPct      decimal.Decimal
 	isLongPosition bool
 }
 
@@ -30,7 +47,7 @@ type structureSwing struct {
 // lookbackPeriod: number of periods to look back for swing identification
 // swingDistance: minimum distance between swing points as a percentage
 // isLong: true for long positions, false for short positions
-func NewStructureSwingStop(lastPrice decimal.Decimal, lookbackPeriod int, swingDistance decimal.Decimal, isLong bool, callback stoploss.DefaultCallback) (stoploss.HybridWithoutTime, error) {
+func NewStructureSwingStop(lookbackPeriod int, lastPrice, swingDistance, stopPct, profitPct decimal.Decimal, isLong bool, callback stoploss.DefaultCallback) (stoploss.HybridWithoutTime, error) {
 	if lookbackPeriod <= 0 {
 		return nil, errSwingLookbackInvalid
 	}
@@ -43,12 +60,12 @@ func NewStructureSwingStop(lastPrice decimal.Decimal, lookbackPeriod int, swingD
 
 	if isLong {
 		// For long positions, initial stop loss below entry, take profit above
-		initialStopLoss = lastPrice.Mul(decimal.NewFromFloat(0.95))   // 5% below entry
-		initialTakeProfit = lastPrice.Mul(decimal.NewFromFloat(1.10)) // 10% above entry
+		initialStopLoss = lastPrice.Mul(stopPct)
+		initialTakeProfit = lastPrice.Mul(profitPct)
 	} else {
 		// For short positions, initial stop loss above entry, take profit below
-		initialStopLoss = lastPrice.Mul(decimal.NewFromFloat(1.05))   // 5% above entry
-		initialTakeProfit = lastPrice.Mul(decimal.NewFromFloat(0.90)) // 10% below entry
+		initialStopLoss = lastPrice.Mul(stopPct)
+		initialTakeProfit = lastPrice.Mul(profitPct)
 	}
 
 	return &structureSwing{
@@ -61,6 +78,8 @@ func NewStructureSwingStop(lastPrice decimal.Decimal, lookbackPeriod int, swingD
 		lastSwingLow:   lastPrice,
 		lastSwingHigh:  lastPrice,
 		isLongPosition: isLong,
+		stopPct:        stopPct,
+		profitPct:      profitPct,
 		BaseResolver: stoploss.BaseResolver{
 			Active:   true,
 			Callback: callback,
@@ -151,26 +170,16 @@ func (ss *structureSwing) updateStopLossAndTakeProfit() {
 	}
 }
 
-func (ss *structureSwing) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+// Calculate represents update last price and recalculate stop loss and take profit based on structure swings
+func (ss *structureSwing) Calculate(currentPrice decimal.Decimal) (decimal.Decimal, decimal.Decimal, error) {
 	if !ss.Active {
-		return decimal.Zero, stoploss.ErrStatusInvalid
+		return decimal.Zero, decimal.Zero, stoploss.ErrStatusInvalid
 	}
 
 	// Update price history with current price
 	ss.UpdatePrice(currentPrice)
 
-	return ss.stopLoss, nil
-}
-
-func (ss *structureSwing) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
-	if !ss.Active {
-		return decimal.Zero, stoploss.ErrStatusInvalid
-	}
-
-	// Update price history with current price
-	ss.UpdatePrice(currentPrice)
-
-	return ss.takeProfit, nil
+	return ss.stopLoss, ss.takeProfit, nil
 }
 
 func (ss *structureSwing) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
@@ -181,7 +190,16 @@ func (ss *structureSwing) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (b
 	// Update price before checking
 	ss.UpdatePrice(currentPrice)
 
-	if currentPrice.LessThanOrEqual(ss.stopLoss) {
+	var triggered bool
+	if ss.isLongPosition {
+		// For long positions, stop loss triggers when price falls below stop loss
+		triggered = currentPrice.LessThanOrEqual(ss.stopLoss)
+	} else {
+		// For short positions, stop loss triggers when price rises above stop loss
+		triggered = currentPrice.GreaterThanOrEqual(ss.stopLoss)
+	}
+
+	if triggered {
 		err := ss.Trigger(stoploss.TRIGGERED_REASON_STRUCTURE_SWING_STOPLOSS)
 		if err != nil {
 			return true, stoploss.ErrCallBackFail
@@ -199,7 +217,16 @@ func (ss *structureSwing) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) 
 	// Update price before checking
 	ss.UpdatePrice(currentPrice)
 
-	if currentPrice.GreaterThanOrEqual(ss.takeProfit) {
+	var triggered bool
+	if ss.isLongPosition {
+		// For long positions, take profit triggers when price rises above take profit
+		triggered = currentPrice.GreaterThanOrEqual(ss.takeProfit)
+	} else {
+		// For short positions, take profit triggers when price falls below take profit
+		triggered = currentPrice.LessThanOrEqual(ss.takeProfit)
+	}
+
+	if triggered {
 		err := ss.Trigger(stoploss.TRIGGERED_REASON_STRUCTURE_SWING_TAKEPROFIT)
 		if err != nil {
 			return true, stoploss.ErrCallBackFail
@@ -234,11 +261,11 @@ func (ss *structureSwing) ReSet(currentPrice decimal.Decimal) error {
 	ss.priceHistory = make([]decimal.Decimal, 0, ss.lookbackPeriod*2)
 
 	if ss.isLongPosition {
-		ss.stopLoss = currentPrice.Mul(decimal.NewFromFloat(0.95))
-		ss.takeProfit = currentPrice.Mul(decimal.NewFromFloat(1.10))
+		ss.stopLoss = currentPrice.Mul(ss.stopPct)
+		ss.takeProfit = currentPrice.Mul(ss.profitPct)
 	} else {
-		ss.stopLoss = currentPrice.Mul(decimal.NewFromFloat(1.05))
-		ss.takeProfit = currentPrice.Mul(decimal.NewFromFloat(0.90))
+		ss.stopLoss = currentPrice.Mul(ss.stopPct)
+		ss.takeProfit = currentPrice.Mul(ss.profitPct)
 	}
 
 	ss.Active = true
