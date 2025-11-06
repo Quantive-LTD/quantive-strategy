@@ -7,6 +7,8 @@ const (
 	TRIGGERED_REASON_FIXED_PERCENTCILE_TAKEPROFIT = "Fixed Percentile Take Profit Triggered"
 	TRIGGERED_REASON_FIXED_ATR_STOPLOSS           = "ATR Based Stop Loss Triggered"
 	TRIGGERED_REASON_FIXED_ATR_TAKEPROFIT         = "ATR Based Take Profit Triggered"
+	TRIGGERED_REASON_FIXED_MA_STOPLOSS            = "Moving Average Stop Loss Triggered"
+	TRIGGERED_REASON_FIXED_MA_TAKEPROFIT          = "Moving Average Take Profit Triggered"
 )
 
 const (
@@ -21,4 +23,6 @@ const (
 const (
 	TRIGGERED_REASON_HYBRID_RISK_REWARD_STOPLOSS   = "Hybrid Risk-Reward Stop Loss Triggered"
 	TRIGGERED_REASON_HYBRID_RISK_REWARD_TAKEPROFIT = "Hybrid Risk-Reward Take Profit Triggered"
+	TRIGGERED_REASON_STRUCTURE_SWING_STOPLOSS      = "Structure Swing Stop Loss Triggered"
+	TRIGGERED_REASON_STRUCTURE_SWING_TAKEPROFIT    = "Structure Swing Take Profit Triggered"
 )
