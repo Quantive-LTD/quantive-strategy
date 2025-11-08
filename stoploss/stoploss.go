@@ -1,3 +1,16 @@
+// Copyright 2025 Quantive. All rights reserved.
+
+// Licensed under the MIT License (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// https://opensource.org/licenses/MIT
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package stoploss
 
 import (
@@ -11,29 +24,27 @@ var (
 	ErrCallBackFail  = errors.New("stop loss callback function failed")
 )
 
-// Time-based + Trailing
-type PeriodicStopLoss interface {
+// Time-based
+type TimeBasedStopLoss interface {
 	StopLoss
 	StopLossCondT
 }
 
-// Fixed-Percentage | Fixed-Trailing
+// Fixed strategy
 type FixedStopLoss interface {
 	StopLoss
 	StopLossCond
 }
 
 // Fixed-ATR
-type VolatilityStopLoss interface {
-	StopLoss
-	StopLossCond
+type FixedVolatilityStopLoss interface {
+	FixedStopLoss
 	UpdateATR(currentATR decimal.Decimal) error
 }
 
 // Fixed-Moving Average
-type MAStopLoss interface {
-	StopLoss
-	StopLossCond
+type FixedMAStopLoss interface {
+	FixedStopLoss
 	SetMA(value decimal.Decimal)
 }
 
@@ -41,6 +52,7 @@ type MAStopLoss interface {
 type StopLoss interface {
 	CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error)
 	Trigger(reason string) error
+	ReSetStopLosser(currentPrice decimal.Decimal) error
 	Deactivate() error
 }
 
@@ -48,14 +60,13 @@ type StopLoss interface {
 type StopLossCondT interface {
 	ShouldTriggerStopLoss(currentPrice decimal.Decimal, timestamp int64) (bool, error)
 	GetStopLoss() (decimal.Decimal, error)
-	ReSet(currentPrice decimal.Decimal) error
+	GetTimeThreshold() (int64, error)
 }
 
 // StopLoss Condition
 type StopLossCond interface {
 	ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error)
 	GetStopLoss() (decimal.Decimal, error)
-	ReSet(currentPrice decimal.Decimal) error
 }
 
 type DefaultCallback func(reason string) error

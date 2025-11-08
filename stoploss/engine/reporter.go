@@ -1,0 +1,85 @@
+// Copyright 2025 Quantive. All rights reserved.
+
+// Licensed under the MIT License (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// https://opensource.org/licenses/MIT
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package engine
+
+import (
+	"fmt"
+
+	"github.com/wang900115/quant/model/result"
+)
+
+type Report struct {
+	generalCount int64
+	hybridCount  int64
+	triggerCount int64
+	errorCount   int64
+}
+
+func NewReport() *Report {
+	return &Report{}
+}
+
+func (rp *Report) ProcessGeneralResult(res <-chan result.StrategyGeneralResult) {
+	rp.generalCount++
+
+	for r := range res {
+		if r.Error != nil {
+			rp.errorCount++
+			fmt.Printf("🔴 ERROR in %s (%s): %v\n",
+				r.StrategyName, r.StrategyType, r.Error)
+			continue
+		}
+
+		if r.Triggered {
+			rp.triggerCount++
+			fmt.Printf("🔔 TRIGGER: %s (%s) - %s at price %s\n",
+				r.StrategyName, r.StrategyType, r.TriggerType,
+				r.LastPrice.String())
+		} else {
+			fmt.Printf("📊 UPDATE: %s (%s) - threshold: %s, price: %s\n",
+				r.StrategyName, r.StrategyType,
+				r.Stat.PriceThreshold.String(), r.LastPrice.String())
+		}
+	}
+}
+
+func (rp *Report) ProcessHybridResult(res <-chan result.StrategyHybridResult) {
+	rp.hybridCount++
+
+	for r := range res {
+		if r.Error != nil {
+			rp.errorCount++
+			fmt.Printf("🔴 HYBRID ERROR in %s: %v\n", r.StrategyName, r.Error)
+			continue
+		}
+
+		if r.Triggered {
+			rp.triggerCount++
+			fmt.Printf("🔔 HYBRID TRIGGER: %s at price %s\n",
+				r.StrategyName, r.LastPrice.String())
+		} else {
+			fmt.Printf("📊 HYBRID UPDATE: %s at price %s\n",
+				r.StrategyName, r.LastPrice.String())
+		}
+	}
+}
+
+func (rp *Report) Stats() map[string]int64 {
+	return map[string]int64{
+		"general_results": rp.generalCount,
+		"hybrid_results":  rp.hybridCount,
+		"triggers":        rp.triggerCount,
+		"errors":          rp.errorCount,
+	}
+}

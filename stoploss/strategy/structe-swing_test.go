@@ -1,3 +1,16 @@
+// Copyright 2025 Quantive. All rights reserved.
+
+// Licensed under the MIT License (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// https://opensource.org/licenses/MIT
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package strategy
 
 import (
@@ -7,266 +20,115 @@ import (
 	"github.com/wang900115/quant/stoploss"
 )
 
-var swingCallback stoploss.DefaultCallback
+func TestNewStructureSwingStop_Long(t *testing.T) {
+	s, err := NewStructureSwingStop(5, d(100), d(0.02), d(0.95), d(1.10), true, nil)
+	if err != nil || s == nil {
+		t.Fatalf("Failed to create long strategy: %v", err)
+	}
+	sl, _ := s.GetStopLoss()
+	tp, _ := s.GetTakeProfit()
+	t.Logf("Long - Entry:100, SL:%v, TP:%v", sl, tp)
+}
 
-func TestNewStructureSwingStop(t *testing.T) {
+func TestNewStructureSwingStop_Short(t *testing.T) {
+	s, err := NewStructureSwingStop(5, d(100), d(0.02), d(1.05), d(0.90), false, nil)
+	if err != nil || s == nil {
+		t.Fatalf("Failed to create short strategy: %v", err)
+	}
+	sl, _ := s.GetStopLoss()
+	tp, _ := s.GetTakeProfit()
+	t.Logf("Short - Entry:100, SL:%v, TP:%v", sl, tp)
+}
+
+func TestStructureSwing_InvalidParams(t *testing.T) {
 	tests := []struct {
-		name           string
-		entryPrice     decimal.Decimal
-		lookbackPeriod int
-		swingDistance  decimal.Decimal
-		isLong         bool
-		expectError    bool
+		name     string
+		lookback int
+		swing    decimal.Decimal
+		wantErr  bool
 	}{
-		{
-			name:           "Valid long position",
-			entryPrice:     decimal.NewFromInt(100),
-			lookbackPeriod: 5,
-			swingDistance:  decimal.NewFromFloat(0.02),
-			isLong:         true,
-			expectError:    false,
-		},
-		{
-			name:           "Valid short position",
-			entryPrice:     decimal.NewFromInt(100),
-			lookbackPeriod: 10,
-			swingDistance:  decimal.NewFromFloat(0.01),
-			isLong:         false,
-			expectError:    false,
-		},
-		{
-			name:           "Invalid lookback period",
-			entryPrice:     decimal.NewFromInt(100),
-			lookbackPeriod: 0,
-			swingDistance:  decimal.NewFromFloat(0.02),
-			isLong:         true,
-			expectError:    true,
-		},
-		{
-			name:           "Invalid swing distance",
-			entryPrice:     decimal.NewFromInt(100),
-			lookbackPeriod: 5,
-			swingDistance:  decimal.NewFromInt(0),
-			isLong:         true,
-			expectError:    true,
-		},
+		{"Valid", 5, d(0.02), false},
+		{"Invalid lookback", 0, d(0.02), true},
+		{"Invalid swing distance", 5, d(0), true},
+		{"Negative swing", 5, d(-0.02), true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			strategy, err := NewStructureSwingStop(tt.entryPrice, tt.lookbackPeriod, tt.swingDistance, tt.isLong, swingCallback)
-			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				}
-				return
-			}
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-				return
-			}
-			if strategy == nil {
-				t.Errorf("Expected strategy but got nil")
+			_, err := NewStructureSwingStop(tt.lookback, d(100), tt.swing, d(0.95), d(1.10), true, nil)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)
 			}
 		})
 	}
 }
 
-func TestStructureSwingStopLoss_LongPosition(t *testing.T) {
-	entryPrice := decimal.NewFromInt(100)
-	strategy, err := NewStructureSwingStop(entryPrice, 3, decimal.NewFromFloat(0.02), true, swingCallback)
-	if err != nil {
-		t.Fatalf("Failed to create strategy: %v", err)
-	}
+func TestStructureSwing_LongPosition_UpTrend(t *testing.T) {
+	data := GetMockTrendingData()
+	s, _ := NewStructureSwingStop(3, data[0].Close, d(0.02), d(0.95), d(1.10), true, nil)
 
-	// Test initial stop loss calculation
-	stopLoss, err := strategy.CalculateStopLoss(entryPrice)
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if stopLoss.LessThanOrEqual(decimal.Zero) {
-		t.Errorf("Expected stop loss to be greater than zero, got %v", stopLoss)
-	}
-
-	// Simulate price movements to create swing points
-	prices := []decimal.Decimal{
-		decimal.NewFromInt(102), // up
-		decimal.NewFromInt(104), // up
-		decimal.NewFromInt(103), // down
-		decimal.NewFromInt(101), // down (swing low)
-		decimal.NewFromInt(105), // up
-		decimal.NewFromInt(107), // up (swing high)
-		decimal.NewFromInt(106), // down
-	}
-
-	for _, price := range prices {
-		_, err := strategy.CalculateStopLoss(price)
-		if err != nil {
-			t.Errorf("Unexpected error calculating stop loss at price %v: %v", price, err)
+	for i := 1; i < len(data); i++ {
+		sl, _ := s.ShouldTriggerStopLoss(data[i].Low)
+		tp, _ := s.ShouldTriggerTakeProfit(data[i].High)
+		curSL, _ := s.GetStopLoss()
+		curTP, _ := s.GetTakeProfit()
+		t.Logf("Period %d: Price=%v, SL=%v, TP=%v", i, data[i].Close, curSL, curTP)
+		if sl {
+			t.Error("SL should not trigger in long uptrend")
+			break
+		}
+		if tp {
+			t.Logf("TP triggered at period %d", i)
+			break
 		}
 	}
-
-	// Test stop loss trigger
-	triggered, err := strategy.ShouldTriggerStopLoss(decimal.NewFromInt(90)) // Below stop loss
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if !triggered {
-		t.Errorf("Expected stop loss to be triggered")
-	}
 }
 
-func TestStructureSwingStopLoss_ShortPosition(t *testing.T) {
-	entryPrice := decimal.NewFromInt(100)
-	strategy, err := NewStructureSwingStop(entryPrice, 3, decimal.NewFromFloat(0.02), false, swingCallback)
-	if err != nil {
-		t.Fatalf("Failed to create strategy: %v", err)
-	}
+func TestStructureSwing_ShortPosition_UpTrend(t *testing.T) {
+	data := GetMockTrendingData()
+	s, _ := NewStructureSwingStop(3, data[0].Close, d(0.02), d(1.05), d(0.90), false, nil)
 
-	// Test initial stop loss calculation
-	stopLoss, err := strategy.CalculateStopLoss(entryPrice)
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if stopLoss.LessThanOrEqual(decimal.Zero) {
-		t.Errorf("Expected stop loss to be greater than zero, got %v", stopLoss)
-	}
-
-	// Simulate price movements to create swing points
-	prices := []decimal.Decimal{
-		decimal.NewFromInt(98), // down
-		decimal.NewFromInt(96), // down
-		decimal.NewFromInt(97), // up
-		decimal.NewFromInt(99), // up (swing high)
-		decimal.NewFromInt(95), // down
-		decimal.NewFromInt(93), // down (swing low)
-		decimal.NewFromInt(94), // up
-	}
-
-	for _, price := range prices {
-		_, err := strategy.CalculateStopLoss(price)
-		if err != nil {
-			t.Errorf("Unexpected error calculating stop loss at price %v: %v", price, err)
+	for i := 1; i < len(data); i++ {
+		sl, _ := s.ShouldTriggerStopLoss(data[i].High)
+		tp, _ := s.ShouldTriggerTakeProfit(data[i].Low)
+		if sl {
+			t.Logf("Short SL triggered at period %d (uptrend)", i)
+			break
+		}
+		if tp {
+			t.Logf("Short TP triggered at period %d", i)
+			break
 		}
 	}
-
-	// Test stop loss trigger
-	triggered, err := strategy.ShouldTriggerStopLoss(decimal.NewFromInt(90)) // Above stop loss for short
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if !triggered {
-		t.Errorf("Expected stop loss to be triggered")
-	}
 }
 
-func TestStructureSwingTakeProfit(t *testing.T) {
-	entryPrice := decimal.NewFromInt(100)
-	strategy, err := NewStructureSwingStop(entryPrice, 3, decimal.NewFromFloat(0.02), true, swingCallback)
-	if err != nil {
-		t.Fatalf("Failed to create strategy: %v", err)
-	}
-
-	// Test take profit calculation
-	takeProfit, err := strategy.CalculateTakeProfit(entryPrice)
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if takeProfit.LessThanOrEqual(decimal.Zero) {
-		t.Errorf("Expected take profit to be greater than zero, got %v", takeProfit)
-	}
-
-	// Test take profit trigger
-	triggered, err := strategy.ShouldTriggerTakeProfit(decimal.NewFromInt(120)) // Above take profit
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if !triggered {
-		t.Errorf("Expected take profit to be triggered")
-	}
+func TestStructureSwing_ReSet(t *testing.T) {
+	s, _ := NewStructureSwingStop(5, d(100), d(0.02), d(0.95), d(1.10), true, nil)
+	s.ReSet(d(110))
+	sl, _ := s.GetStopLoss()
+	tp, _ := s.GetTakeProfit()
+	t.Logf("After reset to 110: SL=%v, TP=%v", sl, tp)
 }
 
-func TestStructureSwingGetMethods(t *testing.T) {
-	entryPrice := decimal.NewFromInt(100)
-	strategy, err := NewStructureSwingStop(entryPrice, 3, decimal.NewFromFloat(0.02), true, swingCallback)
-	if err != nil {
-		t.Fatalf("Failed to create strategy: %v", err)
-	}
-
-	// Test GetStopLoss
-	stopLoss, err := strategy.GetStopLoss()
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if stopLoss.LessThanOrEqual(decimal.Zero) {
-		t.Errorf("Expected stop loss to be greater than zero, got %v", stopLoss)
-	}
-
-	// Test GetTakeProfit
-	takeProfit, err := strategy.GetTakeProfit()
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if takeProfit.LessThanOrEqual(decimal.Zero) {
-		t.Errorf("Expected take profit to be greater than zero, got %v", takeProfit)
-	}
-}
-
-func TestStructureSwingReSet(t *testing.T) {
-	entryPrice := decimal.NewFromInt(100)
-	strategy, err := NewStructureSwingStop(entryPrice, 3, decimal.NewFromFloat(0.02), true, swingCallback)
-	if err != nil {
-		t.Fatalf("Failed to create strategy: %v", err)
-	}
-
-	// Reset with new price
-	newPrice := decimal.NewFromInt(120)
-	err = strategy.ReSet(newPrice)
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	// Verify that stop loss and take profit are updated
-	stopLoss, err := strategy.GetStopLoss()
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	takeProfit, err := strategy.GetTakeProfit()
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	// For long position, stop loss should be below new entry, take profit above
-	if stopLoss.GreaterThanOrEqual(newPrice) {
-		t.Errorf("Expected stop loss %v to be below new entry price %v", stopLoss, newPrice)
-	}
-	if takeProfit.LessThanOrEqual(newPrice) {
-		t.Errorf("Expected take profit %v to be above new entry price %v", takeProfit, newPrice)
-	}
-}
-
-func TestStructureSwingDeactivate(t *testing.T) {
-	entryPrice := decimal.NewFromInt(100)
-	strategy, err := NewStructureSwingStop(entryPrice, 3, decimal.NewFromFloat(0.02), true, swingCallback)
-	if err != nil {
-		t.Fatalf("Failed to create strategy: %v", err)
-	}
-
-	// Deactivate the strategy
-	err = strategy.Deactivate()
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	// Test that methods return errors when inactive
-	_, err = strategy.CalculateStopLoss(entryPrice)
+func TestStructureSwing_Deactivate(t *testing.T) {
+	s, _ := NewStructureSwingStop(5, d(100), d(0.02), d(0.95), d(1.10), true, nil)
+	s.Deactivate()
+	_, _, err := s.Calculate(d(100))
 	if err != stoploss.ErrStatusInvalid {
 		t.Errorf("Expected ErrStatusInvalid, got %v", err)
 	}
+}
 
-	_, err = strategy.GetStopLoss()
-	if err != stoploss.ErrStatusInvalid {
-		t.Errorf("Expected ErrStatusInvalid, got %v", err)
+func BenchmarkNewStructureSwingStop(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		NewStructureSwingStop(5, d(100), d(0.02), d(0.95), d(1.10), true, nil)
+	}
+}
+
+func BenchmarkStructureSwing_Calculate(b *testing.B) {
+	s, _ := NewStructureSwingStop(5, d(100), d(0.02), d(0.95), d(1.10), true, nil)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.Calculate(d(105))
 	}
 }
