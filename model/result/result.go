@@ -140,7 +140,7 @@ func (sr *StrategyGeneralResult) String() string {
 }
 
 func (sr *StrategyHybridResult) String() string {
-	return fmt.Sprintf("StrategyHybridResult{StrategyName: %s, StrategyType: %s, Triggered: %t, TriggerType: %s, StopLastPrice: %s, StopPriceThreshold: %s, ProfitLastPrice: %s, ProfitPriceThreshold: %s, LastTime: %s, TimeThreshold: %s, Error: %v}",
+	return fmt.Sprintf("StrategyHybridResult{StrategyName: %s, StrategyType: %s, Triggered: %t, TriggerType: %s, StopLastPrice: %s, StopPriceThreshold: %s, ProfitLastPrice: %s, ProfitPriceThreshold: %s, LastTime: %s, TimeThreshold: %s, Error: %s}",
 		sr.StrategyName,
 		sr.StrategyType,
 		sr.Triggered,
@@ -150,7 +150,7 @@ func (sr *StrategyHybridResult) String() string {
 		sr.profitStat.PriceThreshold.String(),
 		sr.LastTime.String(),
 		sr.TimeThreshold.String(),
-		sr.Error,
+		sr.Error.Error(),
 	)
 }
 
