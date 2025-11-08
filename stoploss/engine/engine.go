@@ -152,7 +152,7 @@ func (csm *Engine) Start() error {
 		go csm.handleTimedHybrid()
 	}
 	generalResult, hybridResult := csm.execution.getResult()
-	if csm.fss || csm.tss || csm.fts || csm.hts {
+	if csm.fss || csm.tss || csm.fts || csm.tts {
 		go csm.Reporter.ProcessGeneralResult(generalResult)
 	}
 
