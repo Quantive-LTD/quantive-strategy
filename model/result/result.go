@@ -126,6 +126,10 @@ func (sr *StrategyHybridResult) SetError(err error) {
 }
 
 func (sr *StrategyGeneralResult) String() string {
+	errorStr := "<nil>"
+	if sr.Error != nil {
+		errorStr = sr.Error.Error()
+	}
 	return fmt.Sprintf("StrategyGeneralResult{StrategyName: %s, StrategyType: %s, Triggered: %t, TriggerType: %s, LastPrice: %s, PriceThreshold: %s, LastTime: %s, TimeThreshold: %s, Error: %v}",
 		sr.StrategyName,
 		sr.StrategyType,
@@ -135,12 +139,16 @@ func (sr *StrategyGeneralResult) String() string {
 		sr.Stat.PriceThreshold.String(),
 		sr.LastTime.String(),
 		sr.TimeThreshold.String(),
-		sr.Error,
+		errorStr,
 	)
 }
 
 func (sr *StrategyHybridResult) String() string {
-	return fmt.Sprintf("StrategyHybridResult{StrategyName: %s, StrategyType: %s, Triggered: %t, TriggerType: %s, StopLastPrice: %s, StopPriceThreshold: %s, ProfitLastPrice: %s, ProfitPriceThreshold: %s, LastTime: %s, TimeThreshold: %s, Error: %s}",
+	errorStr := "<nil>"
+	if sr.Error != nil {
+		errorStr = sr.Error.Error()
+	}
+	return fmt.Sprintf("StrategyHybridResult{StrategyName: %s, StrategyType: %s, Triggered: %t, TriggerType: %s, LastPrice: %s, StopPriceThreshold: %s, ProfitPriceThreshold: %s, LastTime: %s, TimeThreshold: %s, Error: %s}",
 		sr.StrategyName,
 		sr.StrategyType,
 		sr.Triggered,
@@ -150,7 +158,7 @@ func (sr *StrategyHybridResult) String() string {
 		sr.profitStat.PriceThreshold.String(),
 		sr.LastTime.String(),
 		sr.TimeThreshold.String(),
-		sr.Error.Error(),
+		errorStr,
 	)
 }
 
