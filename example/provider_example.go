@@ -1,8 +1,21 @@
-package main
+// Copyright 2025 Quantive. All rights reserved.
+
+// Licensed under the MIT License (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// https://opensource.org/licenses/MIT
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package example
 
 import (
 	"context"
-	"testing"
+	"log"
 
 	"github.com/wang900115/quant/model"
 	"github.com/wang900115/quant/model/currency"
@@ -14,15 +27,14 @@ import (
 	"github.com/wang900115/quant/provider/okx"
 )
 
-func TestMain(t *testing.T) {
-	// Initial Provider
+func ProviderExample() {
 	ps := provider.New()
 	ps.Register(model.BINANCE, binance.NewClient())
 	ps.Register(model.BYBIT, bybit.NewClient())
 	ps.Register(model.COINBASE, coinbase.NewClient())
 	ps.Register(model.OKX, okx.NewClient())
 
-	t.Logf("Providers registered: %+v", ps.ListProviders())
+	log.Printf("Providers registered: %+v \n", ps.ListProviders())
 
 	tradingPair := model.TradingPair{
 		ExchangeID: model.BINANCE,
@@ -32,9 +44,9 @@ func TestMain(t *testing.T) {
 	}
 	pricePoint, err := ps.GetPrice(context.Background(), tradingPair)
 	if err != nil {
-		t.Fatalf("Failed to get price: %v", err)
+		log.Fatalf("Failed to get price: %v \n", err)
 	}
-	t.Logf("Price for %s: %+v", tradingPair.Symbol(), *pricePoint)
+	log.Printf("Price for %s: %+v", tradingPair.Symbol(), *pricePoint)
 
 	tradingPair = model.TradingPair{
 		ExchangeID: model.COINBASE,
@@ -44,19 +56,19 @@ func TestMain(t *testing.T) {
 	}
 	pricePoint, err = ps.GetPrice(context.Background(), tradingPair)
 	if err != nil {
-		t.Fatalf("Failed to get price: %v", err)
+		log.Fatalf("Failed to get price: %v \n", err)
 	}
-	t.Logf("Price for %s: %+v \n", tradingPair.Symbol(), *pricePoint)
+	log.Printf("Price for %s: %+v \n", tradingPair.Symbol(), *pricePoint)
 
 	klines, err := ps.GetKlines(context.Background(), tradingPair, "1h", 10)
 	if err != nil {
-		t.Fatalf("Failed to get klines: %v", err)
+		log.Fatalf("Failed to get klines: %v \n", err)
 	}
-	t.Logf("Klines for %s: %+v \n", tradingPair.Symbol(), klines)
+	log.Printf("Klines for %s: %+v \n", tradingPair.Symbol(), klines)
 
 	orderBook, err := ps.GetOrderBook(context.Background(), tradingPair, 5)
 	if err != nil {
-		t.Fatalf("Failed to get order book: %v", err)
+		log.Fatalf("Failed to get order book: %v \n", err)
 	}
-	t.Logf("Order book for %s: %+v \n", tradingPair.Symbol(), orderBook)
+	log.Printf("Order book for %s: %+v \n", tradingPair.Symbol(), orderBook)
 }

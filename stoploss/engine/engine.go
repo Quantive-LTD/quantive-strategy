@@ -1,6 +1,4 @@
-// Copyright 2025 Perry. All rights reserved.
-
-// Licensed MIT License
+// Copyright 2025 Quantive. All rights reserved.
 
 // Licensed under the MIT License (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,10 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package manager
+package engine
 
 import (
 	"context"
+	"log"
 	"sync"
 	"time"
 
@@ -25,166 +24,285 @@ import (
 	"github.com/wang900115/quant/stoploss"
 )
 
-type ManagerConfig struct {
+type engineError struct{ msg string }
+
+func (e *engineError) Error() string {
+	return e.msg
+}
+
+var (
+	errNoStrategies = &engineError{"no strategies registered"}
+	errNonsupported = &engineError{"unsupported strategy type"}
+)
+
+type Config struct {
 	BufferSize    int
 	ReadTimeout   time.Duration
 	CheckInterval time.Duration
 }
 
-type Manager struct {
+type Engine struct {
 	wg       sync.WaitGroup
 	ctx      context.Context
 	cancel   context.CancelFunc
 	shutdown chan struct{}
 
+	fss bool
+	tss bool
+	fts bool
+	tts bool
+	hfs bool
+	hts bool
+
 	portfolio *Portfolio
 	execution *Execution
 	Reporter  *Report
-	ManagerConfig
+	Config    Config
 }
 
-func New(config ManagerConfig) *Manager {
+func New(config Config) *Engine {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Manager{
-		ctx:           ctx,
-		cancel:        cancel,
-		shutdown:      make(chan struct{}),
-		portfolio:     NewPortfolio(),
-		execution:     NewExecutionManager(config.BufferSize),
-		Reporter:      NewReport(),
-		ManagerConfig: config,
+	return &Engine{
+		ctx:       ctx,
+		cancel:    cancel,
+		shutdown:  make(chan struct{}),
+		portfolio: NewPortfolio(),
+		execution: NewExecutionManager(config.BufferSize),
+		Reporter:  NewReport(),
+		Config:    config,
+
+		fss: false,
+		tss: false,
+		fts: false,
+		tts: false,
+		hfs: false,
+		hts: false,
 	}
 }
 
-func (csm *Manager) RegisterStrategy(name string, strategy interface{}) {
+func (csm *Engine) RegisterStrategy(name string, strategy interface{}) error {
 	switch s := strategy.(type) {
 	case stoploss.FixedStopLoss:
 		csm.portfolio.RegistFixedStoplossStrategy(name, s)
+		csm.fss = true
 	case stoploss.TimeBasedStopLoss:
 		csm.portfolio.RegistTimedStoplossStrategy(name, s)
+		csm.tss = true
 	case stoploss.FixedTakeProfit:
 		csm.portfolio.RegistFixedTakeProfitStrategy(name, s)
+		csm.fts = true
 	case stoploss.TimeBasedTakeProfit:
 		csm.portfolio.RegistTimedTakeProfitStrategy(name, s)
+		csm.tts = true
 	case stoploss.HybridWithoutTime:
 		csm.portfolio.RegistHybridStrategy(name, s)
+		csm.hfs = true
 	case stoploss.HybridWithTime:
 		csm.portfolio.RegistHybridTimedStrategy(name, s)
+		csm.hts = true
 	default:
-		panic("unsupported strategy type")
+		return errNonsupported
 	}
+	return nil
 }
 
-func (csm *Manager) Start() {
-	csm.wg.Add(6)
-	go csm.handleFixedStopLoss()
-	go csm.handleTimedStopLoss()
-	go csm.handleFixedProfit()
-	go csm.handleTimedProfit()
-	go csm.handleFixedHybrid()
-	go csm.handleTimedHybrid()
+func (csm *Engine) Start() error {
+	count := 0
 
+	if csm.fss {
+		count++
+	}
+	if csm.tss {
+		count++
+	}
+	if csm.fts {
+		count++
+	}
+	if csm.tts {
+		count++
+	}
+	if csm.hfs {
+		count++
+	}
+	if csm.hts {
+		count++
+	}
+
+	if count == 0 {
+		return errNoStrategies
+	}
+
+	csm.wg.Add(count)
+	if len(csm.portfolio.fixedStoplossStrategies) > 0 {
+		go csm.handleFixedStopLoss()
+	}
+	if len(csm.portfolio.timedStoplossStrategies) > 0 {
+		go csm.handleTimedStopLoss()
+	}
+	if len(csm.portfolio.fixedTakeProfitStrategies) > 0 {
+		go csm.handleFixedProfit()
+	}
+	if len(csm.portfolio.timedTakeProfitStrategies) > 0 {
+		go csm.handleTimedProfit()
+	}
+	if len(csm.portfolio.hybridFixedStrategies) > 0 {
+		go csm.handleFixedHybrid()
+	}
+	if len(csm.portfolio.hybridTimedStrategies) > 0 {
+		go csm.handleTimedHybrid()
+	}
 	generalResult, hybridResult := csm.execution.getResult()
-	go csm.Reporter.ProcessGeneralResult(generalResult)
-	go csm.Reporter.ProcessHybridResult(hybridResult)
+	if len(csm.portfolio.fixedStoplossStrategies) > 0 || len(csm.portfolio.timedStoplossStrategies) > 0 ||
+		len(csm.portfolio.fixedTakeProfitStrategies) > 0 ||
+		len(csm.portfolio.timedTakeProfitStrategies) > 0 {
+		go csm.Reporter.ProcessGeneralResult(generalResult)
+	}
+
+	if len(csm.portfolio.hybridFixedStrategies) > 0 || len(csm.portfolio.hybridTimedStrategies) > 0 {
+		go csm.Reporter.ProcessHybridResult(hybridResult)
+	}
+
+	return nil
 }
 
-func (csm *Manager) Snapshot() map[string]int64 {
+func (csm *Engine) Snapshot() map[string]int64 {
 	return csm.Reporter.Stats()
 }
 
-func (csm *Manager) handleFixedStopLoss() {
+func (csm *Engine) handleFixedStopLoss() {
 	defer csm.wg.Done()
+	log.Println("[handleFixedStopLoss] started")
+
+	ticker := time.NewTicker(csm.Config.CheckInterval)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-csm.ctx.Done():
+			log.Println("[handleFixedStopLoss] stopped")
 			return
 		case update := <-csm.execution.fixedStoplossChannel:
+			log.Println("[handleFixedStopLoss] received update price:", update.NewPrice)
 			csm.processFixedStopStrategies(update)
-		case <-time.After(csm.CheckInterval):
+		case <-ticker.C:
 			// Periodic health check
+			log.Println("[handleFixedStopLoss] heartbeat")
 			continue
 		}
 
 	}
 }
 
-func (csm *Manager) handleTimedStopLoss() {
+func (csm *Engine) handleTimedStopLoss() {
 	defer csm.wg.Done()
+	log.Println("[handleTimedStopLoss] started")
+
+	ticker := time.NewTicker(csm.Config.CheckInterval)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-csm.ctx.Done():
+			log.Println("[handleTimedStopLoss] stopped")
 			return
 		case update := <-csm.execution.timedStoplossChannel:
+			log.Println("[handleTimedStopLoss] received update price:", update.NewPrice)
 			csm.processTimedStopStrategies(update)
-		case <-time.After(csm.CheckInterval):
+		case <-ticker.C:
 			// Periodic health check
+			log.Println("[handleTimedStopLoss] heartbeat")
 			continue
 		}
 	}
 }
 
-func (csm *Manager) handleFixedProfit() {
+func (csm *Engine) handleFixedProfit() {
 	defer csm.wg.Done()
+	log.Println("[handleFixedProfit] started")
+
+	ticker := time.NewTicker(csm.Config.CheckInterval)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-csm.ctx.Done():
+			log.Println("[handleFixedProfit] stopped")
 			return
 		case update := <-csm.execution.fixedTakeProfitChannel:
+			log.Println("[handleFixedProfit] received update price:", update.NewPrice)
 			csm.processFixedProfitStrategies(update)
-		case <-time.After(csm.CheckInterval):
+		case <-ticker.C:
 			// Periodic health check
+			log.Println("[handleFixedProfit] heartbeat")
 			continue
 		}
 	}
 }
 
-func (csm *Manager) handleTimedProfit() {
+func (csm *Engine) handleTimedProfit() {
 	defer csm.wg.Done()
+	log.Println("[handleTimedProfit] started")
+
+	ticker := time.NewTicker(csm.Config.CheckInterval)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-csm.ctx.Done():
+			log.Println("[handleTimedProfit] stopped")
 			return
 		case update := <-csm.execution.timedTakeProfitChannel:
+			log.Println("[handleTimedProfit] received update price:", update.NewPrice)
 			csm.processTimedProfitStrategies(update)
-		case <-time.After(csm.CheckInterval):
+		case <-ticker.C:
 			// Periodic health check
+			log.Println("[handleTimedProfit] heartbeat")
 			continue
 		}
 	}
 }
 
-func (csm *Manager) handleFixedHybrid() {
+func (csm *Engine) handleFixedHybrid() {
 	defer csm.wg.Done()
+	log.Println("[handleFixedHybrid] started")
+
+	ticker := time.NewTicker(csm.Config.CheckInterval)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-csm.ctx.Done():
+			log.Println("[handleFixedHybrid] stopped")
 			return
 		case update := <-csm.execution.hybridFixedChannel:
+			log.Println("[handleFixedHybrid] received update price:", update.NewPrice)
 			csm.processHybridFixedStrategies(update)
-		case <-time.After(csm.CheckInterval):
+		case <-ticker.C:
 			// Periodic health check
+			log.Println("[handleFixedHybrid] heartbeat")
 			continue
 		}
 	}
 }
 
-func (csm *Manager) handleTimedHybrid() {
+func (csm *Engine) handleTimedHybrid() {
 	defer csm.wg.Done()
+	log.Println("[handleTimedHybrid] started")
+
+	ticker := time.NewTicker(csm.Config.CheckInterval)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-csm.ctx.Done():
+			log.Println("[handleTimedHybrid] stopped")
 			return
 		case update := <-csm.execution.hybridTimedChannel:
+			log.Println("[handleTimedHybrid] received update price:", update.NewPrice)
 			csm.processHybridTimedStrategies(update)
-		case <-time.After(csm.CheckInterval):
+		case <-ticker.C:
 			// Periodic health check
+			log.Println("[handleTimedHybrid] heartbeat")
 			continue
 		}
 	}
 }
 
-func (csm *Manager) processFixedStopStrategies(update model.PricePoint) {
+func (csm *Engine) processFixedStopStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetFixedStoplossStrategies()
 	for name, strategy := range strategies {
 		newThreshold, err := strategy.CalculateStopLoss(update.NewPrice)
@@ -205,7 +323,7 @@ func (csm *Manager) processFixedStopStrategies(update model.PricePoint) {
 	}
 }
 
-func (csm *Manager) processTimedStopStrategies(update model.PricePoint) {
+func (csm *Engine) processTimedStopStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetTimedStoplossStrategies()
 	for name, strategy := range strategies {
 		timeThreshold, err := strategy.GetTimeThreshold()
@@ -227,7 +345,7 @@ func (csm *Manager) processTimedStopStrategies(update model.PricePoint) {
 	}
 }
 
-func (csm *Manager) processFixedProfitStrategies(update model.PricePoint) {
+func (csm *Engine) processFixedProfitStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetFixedTakeProfitStrategies()
 	for name, strategy := range strategies {
 		newThreshold, err := strategy.CalculateTakeProfit(update.NewPrice)
@@ -248,7 +366,7 @@ func (csm *Manager) processFixedProfitStrategies(update model.PricePoint) {
 	}
 }
 
-func (csm *Manager) processTimedProfitStrategies(update model.PricePoint) {
+func (csm *Engine) processTimedProfitStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetTimedTakeProfitStrategies()
 	for name, strategy := range strategies {
 		timeThreshold, err := strategy.GetTimeThreshold()
@@ -270,7 +388,7 @@ func (csm *Manager) processTimedProfitStrategies(update model.PricePoint) {
 	}
 }
 
-func (csm *Manager) processHybridFixedStrategies(update model.PricePoint) {
+func (csm *Engine) processHybridFixedStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetHybridStrategies()
 	for name, strategy := range strategies {
 		newStop, newProfit, err := strategy.Calculate(update.NewPrice)
@@ -291,7 +409,7 @@ func (csm *Manager) processHybridFixedStrategies(update model.PricePoint) {
 	}
 }
 
-func (csm *Manager) processHybridTimedStrategies(update model.PricePoint) {
+func (csm *Engine) processHybridTimedStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetHybridStrategies()
 	for name, strategy := range strategies {
 		newStop, newProfit, err := strategy.Calculate(update.NewPrice)
@@ -312,52 +430,33 @@ func (csm *Manager) processHybridTimedStrategies(update model.PricePoint) {
 	}
 }
 
-func (csm *Manager) Collect(pricePoint model.PricePoint, callback func()) {
-	select {
-	case csm.execution.fixedStoplossChannel <- pricePoint:
-	case <-csm.ctx.Done():
-		return
-	default:
-		callback()
+func (csm *Engine) Collect(pricePoint model.PricePoint, callback func()) {
+	channels := []struct {
+		ch   chan model.PricePoint
+		name string
+	}{
+		{csm.execution.fixedStoplossChannel, "fixed stoploss"},
+		{csm.execution.timedStoplossChannel, "timed stoploss"},
+		{csm.execution.fixedTakeProfitChannel, "fixed take profit"},
+		{csm.execution.timedTakeProfitChannel, "timed take profit"},
+		{csm.execution.hybridFixedChannel, "hybrid fixed"},
+		{csm.execution.hybridTimedChannel, "hybrid timed"},
 	}
 
-	select {
-	case csm.execution.timedStoplossChannel <- pricePoint:
-	case <-csm.ctx.Done():
-		return
-	default:
-		callback()
-	}
-
-	select {
-	case csm.execution.timedTakeProfitChannel <- pricePoint:
-	case <-csm.ctx.Done():
-		return
-	default:
-		callback()
-	}
-
-	select {
-	case csm.execution.hybridFixedChannel <- pricePoint:
-	case <-csm.ctx.Done():
-		return
-	default:
-		callback()
-	}
-
-	select {
-	case csm.execution.hybridTimedChannel <- pricePoint:
-	case <-csm.ctx.Done():
-		return
-	default:
-		callback()
+	for _, c := range channels {
+		select {
+		case c.ch <- pricePoint:
+			log.Printf("Sent to %s channel \n", c.name)
+		default:
+			callback()
+		}
 	}
 }
 
-func (csm *Manager) Stop() {
+func (csm *Engine) Stop() {
 	csm.cancel()
-	csm.wg.Wait()
 	csm.execution.closeChannels()
+	csm.wg.Wait()
 }
 
 // func (csm *Manager) Stats() map[string]interface{} {

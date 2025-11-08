@@ -11,16 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metric
+package main
 
-import "testing"
-
-func TestGaugeInfoJsonString(t *testing.T) {
-	g := NewGaugeInfo()
-	g.Set("key1", "value1")
-	jsonString := g.Snapshot().Value().String()
-	expected := `{"key1":"value1"}`
-	if jsonString != expected {
-		t.Errorf("Expected JSON string: %s, got: %s", expected, jsonString)
-	}
+func main() {
+	// This is just a placeholder main function.
+	// The actual examples and tests are located in the example and test files.
 }

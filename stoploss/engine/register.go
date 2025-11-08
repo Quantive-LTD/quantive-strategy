@@ -1,6 +1,4 @@
-// Copyright 2025 Perry. All rights reserved.
-
-// Licensed MIT License
+// Copyright 2025 Quantive. All rights reserved.
 
 // Licensed under the MIT License (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package manager
+package engine
 
 import (
 	"sync"
@@ -29,7 +27,7 @@ type Portfolio struct {
 	timedStoplossStrategies   map[string]stoploss.TimeBasedStopLoss
 	fixedTakeProfitStrategies map[string]stoploss.FixedTakeProfit
 	timedTakeProfitStrategies map[string]stoploss.TimeBasedTakeProfit
-	hybridStrategies          map[string]stoploss.HybridWithoutTime
+	hybridFixedStrategies     map[string]stoploss.HybridWithoutTime
 	hybridTimedStrategies     map[string]stoploss.HybridWithTime
 }
 
@@ -39,7 +37,7 @@ func NewPortfolio() *Portfolio {
 		timedStoplossStrategies:   make(map[string]stoploss.TimeBasedStopLoss),
 		fixedTakeProfitStrategies: make(map[string]stoploss.FixedTakeProfit),
 		timedTakeProfitStrategies: make(map[string]stoploss.TimeBasedTakeProfit),
-		hybridStrategies:          make(map[string]stoploss.HybridWithoutTime),
+		hybridFixedStrategies:     make(map[string]stoploss.HybridWithoutTime),
 		hybridTimedStrategies:     make(map[string]stoploss.HybridWithTime),
 	}
 }
@@ -76,7 +74,7 @@ func (p *Portfolio) RegistHybridStrategy(name string, strategy stoploss.HybridWi
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	p.hybridStrategies[name] = strategy
+	p.hybridFixedStrategies[name] = strategy
 }
 
 func (p *Portfolio) RegistHybridTimedStrategy(name string, strategy stoploss.HybridWithTime) {
@@ -139,7 +137,7 @@ func (p *Portfolio) GetHybridStrategies() map[string]stoploss.HybridWithoutTime 
 
 	// Return a copy to avoid race conditions
 	copyMap := make(map[string]stoploss.HybridWithoutTime)
-	for k, v := range p.hybridStrategies {
+	for k, v := range p.hybridFixedStrategies {
 		copyMap[k] = v
 	}
 	return copyMap

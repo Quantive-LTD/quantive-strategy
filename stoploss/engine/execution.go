@@ -1,6 +1,4 @@
-// Copyright 2025 Perry. All rights reserved.
-
-// Licensed MIT License
+// Copyright 2025 Quantive. All rights reserved.
 
 // Licensed under the MIT License (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package manager
+package engine
 
 import (
 	"github.com/wang900115/quant/model"
