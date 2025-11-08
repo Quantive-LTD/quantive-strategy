@@ -18,7 +18,16 @@ import (
 	"github.com/wang900115/quant/stoploss"
 )
 
-type Trailing struct {
+// FixedTrailingStop represents a trailing stop loss strategy
+type FixedTrailingStop struct {
+	stoploss.BaseResolver
+	tolerancePct decimal.Decimal
+	lastPrice    decimal.Decimal
+	threshold    decimal.Decimal
+}
+
+// FixedTrailingProfit represents a trailing take profit strategy
+type FixedTrailingProfit struct {
 	stoploss.BaseResolver
 	tolerancePct decimal.Decimal
 	lastPrice    decimal.Decimal
@@ -30,7 +39,7 @@ func NewFixedTrailingStop(entryPrice, stopLossRate decimal.Decimal, callback sto
 	if stopLossRate.IsNegative() || stopLossRate.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errStopLossRateInvalid
 	}
-	return &Trailing{
+	return &FixedTrailingStop{
 		tolerancePct: stopLossRate,
 		lastPrice:    entryPrice,
 		threshold:    entryPrice.Mul(decimal.NewFromInt(1).Sub(stopLossRate)),
@@ -46,7 +55,7 @@ func NewFixedTrailingProfit(entryPrice, takeProfitRate decimal.Decimal, callback
 	if takeProfitRate.IsNegative() || takeProfitRate.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errTakeProfitRateInvalid
 	}
-	return &Trailing{
+	return &FixedTrailingProfit{
 		tolerancePct: takeProfitRate,
 		lastPrice:    entryPrice,
 		threshold:    entryPrice.Mul(decimal.NewFromInt(1).Add(takeProfitRate)),
@@ -58,7 +67,7 @@ func NewFixedTrailingProfit(entryPrice, takeProfitRate decimal.Decimal, callback
 }
 
 // CalculateStopLoss represents first update last price and calculate stop loss then update threshold
-func (t *Trailing) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+func (t *FixedTrailingStop) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	if !t.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -70,7 +79,7 @@ func (t *Trailing) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Deci
 }
 
 // CalculateTakeProfit represents first update last price and calculate take profit then update threshold
-func (t *Trailing) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+func (t *FixedTrailingProfit) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	if !t.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -82,7 +91,7 @@ func (t *Trailing) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.De
 }
 
 // ShouldTriggerStopLoss checks if the stop loss should be triggered
-func (t *Trailing) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
+func (t *FixedTrailingStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
 	if !t.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -97,7 +106,7 @@ func (t *Trailing) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, er
 }
 
 // ShouldTriggerTakeProfit checks if the take profit should be triggered
-func (t *Trailing) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, error) {
+func (t *FixedTrailingProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, error) {
 	if !t.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -112,7 +121,7 @@ func (t *Trailing) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, 
 }
 
 // GetStopLoss returns the current stop loss threshold
-func (t *Trailing) GetStopLoss() (decimal.Decimal, error) {
+func (t *FixedTrailingStop) GetStopLoss() (decimal.Decimal, error) {
 	if !t.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -120,7 +129,7 @@ func (t *Trailing) GetStopLoss() (decimal.Decimal, error) {
 }
 
 // GetTakeProfit returns the current take profit threshold
-func (t *Trailing) GetTakeProfit() (decimal.Decimal, error) {
+func (t *FixedTrailingProfit) GetTakeProfit() (decimal.Decimal, error) {
 	if !t.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -128,7 +137,7 @@ func (t *Trailing) GetTakeProfit() (decimal.Decimal, error) {
 }
 
 // ReSetStopLosser resets the stop loss based on the current price
-func (t *Trailing) ReSetStopLosser(currentPrice decimal.Decimal) error {
+func (t *FixedTrailingStop) ReSetStopLosser(currentPrice decimal.Decimal) error {
 	if !t.Active {
 		return stoploss.ErrStatusInvalid
 	}
@@ -139,7 +148,7 @@ func (t *Trailing) ReSetStopLosser(currentPrice decimal.Decimal) error {
 }
 
 // ReSetTakeProfiter resets the take profit based on the current price
-func (t *Trailing) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
+func (t *FixedTrailingProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
 	if !t.Active {
 		return stoploss.ErrStatusInvalid
 	}

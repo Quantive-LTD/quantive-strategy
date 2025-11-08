@@ -64,3 +64,14 @@ Quant integrates multiple external market data sources for real-time and histori
 │  Analytics Module   │  ← Reports & visualization
 └─────────────────────┘
 ```
+
+## Examples
+
+For detailed usage examples and code samples, see the [Example Documentation](./example/README.md).
+
+The examples include:
+- Strategy engine setup and configuration
+- Registering multiple trading strategies
+- Processing real-time price updates
+- Implementing custom callbacks
+- Complete working demos

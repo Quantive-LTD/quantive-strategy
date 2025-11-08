@@ -133,32 +133,30 @@ func (csm *Engine) Start() error {
 	}
 
 	csm.wg.Add(count)
-	if len(csm.portfolio.fixedStoplossStrategies) > 0 {
+	if csm.fss {
 		go csm.handleFixedStopLoss()
 	}
-	if len(csm.portfolio.timedStoplossStrategies) > 0 {
+	if csm.tss {
 		go csm.handleTimedStopLoss()
 	}
-	if len(csm.portfolio.fixedTakeProfitStrategies) > 0 {
+	if csm.fts {
 		go csm.handleFixedProfit()
 	}
-	if len(csm.portfolio.timedTakeProfitStrategies) > 0 {
+	if csm.tts {
 		go csm.handleTimedProfit()
 	}
-	if len(csm.portfolio.hybridFixedStrategies) > 0 {
+	if csm.hfs {
 		go csm.handleFixedHybrid()
 	}
-	if len(csm.portfolio.hybridTimedStrategies) > 0 {
+	if csm.hts {
 		go csm.handleTimedHybrid()
 	}
 	generalResult, hybridResult := csm.execution.getResult()
-	if len(csm.portfolio.fixedStoplossStrategies) > 0 || len(csm.portfolio.timedStoplossStrategies) > 0 ||
-		len(csm.portfolio.fixedTakeProfitStrategies) > 0 ||
-		len(csm.portfolio.timedTakeProfitStrategies) > 0 {
+	if csm.fss || csm.tss || csm.fts || csm.tts {
 		go csm.Reporter.ProcessGeneralResult(generalResult)
 	}
 
-	if len(csm.portfolio.hybridFixedStrategies) > 0 || len(csm.portfolio.hybridTimedStrategies) > 0 {
+	if csm.hfs || csm.hts {
 		go csm.Reporter.ProcessHybridResult(hybridResult)
 	}
 
@@ -181,7 +179,6 @@ func (csm *Engine) handleFixedStopLoss() {
 			log.Println("[handleFixedStopLoss] stopped")
 			return
 		case update := <-csm.execution.fixedStoplossChannel:
-			log.Println("[handleFixedStopLoss] received update price:", update.NewPrice)
 			csm.processFixedStopStrategies(update)
 		case <-ticker.C:
 			// Periodic health check
@@ -204,7 +201,6 @@ func (csm *Engine) handleTimedStopLoss() {
 			log.Println("[handleTimedStopLoss] stopped")
 			return
 		case update := <-csm.execution.timedStoplossChannel:
-			log.Println("[handleTimedStopLoss] received update price:", update.NewPrice)
 			csm.processTimedStopStrategies(update)
 		case <-ticker.C:
 			// Periodic health check
@@ -226,7 +222,6 @@ func (csm *Engine) handleFixedProfit() {
 			log.Println("[handleFixedProfit] stopped")
 			return
 		case update := <-csm.execution.fixedTakeProfitChannel:
-			log.Println("[handleFixedProfit] received update price:", update.NewPrice)
 			csm.processFixedProfitStrategies(update)
 		case <-ticker.C:
 			// Periodic health check
@@ -248,7 +243,6 @@ func (csm *Engine) handleTimedProfit() {
 			log.Println("[handleTimedProfit] stopped")
 			return
 		case update := <-csm.execution.timedTakeProfitChannel:
-			log.Println("[handleTimedProfit] received update price:", update.NewPrice)
 			csm.processTimedProfitStrategies(update)
 		case <-ticker.C:
 			// Periodic health check
@@ -270,7 +264,6 @@ func (csm *Engine) handleFixedHybrid() {
 			log.Println("[handleFixedHybrid] stopped")
 			return
 		case update := <-csm.execution.hybridFixedChannel:
-			log.Println("[handleFixedHybrid] received update price:", update.NewPrice)
 			csm.processHybridFixedStrategies(update)
 		case <-ticker.C:
 			// Periodic health check
@@ -292,7 +285,6 @@ func (csm *Engine) handleTimedHybrid() {
 			log.Println("[handleTimedHybrid] stopped")
 			return
 		case update := <-csm.execution.hybridTimedChannel:
-			log.Println("[handleTimedHybrid] received update price:", update.NewPrice)
 			csm.processHybridTimedStrategies(update)
 		case <-ticker.C:
 			// Periodic health check
@@ -305,10 +297,10 @@ func (csm *Engine) handleTimedHybrid() {
 func (csm *Engine) processFixedStopStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetFixedStoplossStrategies()
 	for name, strategy := range strategies {
-		newThreshold, err := strategy.CalculateStopLoss(update.NewPrice)
-		if err == nil {
+		shouldTrigger, err := strategy.ShouldTriggerStopLoss(update.NewPrice)
+		newThreshold, calcErr := strategy.CalculateStopLoss(update.NewPrice)
+		if calcErr == nil {
 			result := result.NewGeneral(name, "Fixed", "StopLoss", update.NewPrice, newThreshold, update.UpdatedAt, time.Duration(0))
-			shouldTrigger, err := strategy.ShouldTriggerStopLoss(update.NewPrice)
 			if err == nil {
 				result.SetTriggered(shouldTrigger)
 			} else {
@@ -326,14 +318,14 @@ func (csm *Engine) processFixedStopStrategies(update model.PricePoint) {
 func (csm *Engine) processTimedStopStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetTimedStoplossStrategies()
 	for name, strategy := range strategies {
-		timeThreshold, err := strategy.GetTimeThreshold()
-		newThreshold, err := strategy.CalculateStopLoss(update.NewPrice)
-		if err == nil {
+		timeThreshold, _ := strategy.GetTimeThreshold()
+		shouldTrigger, err := strategy.ShouldTriggerStopLoss(update.NewPrice, update.UpdatedAt.UnixMilli())
+		newThreshold, calcErr := strategy.CalculateStopLoss(update.NewPrice)
+		if calcErr == nil {
 			result := result.NewGeneral(name, "Timed", "StopLoss", update.NewPrice, newThreshold, update.UpdatedAt, time.Duration(timeThreshold))
-			shouldTrigger, err := strategy.ShouldTriggerStopLoss(update.NewPrice, update.UpdatedAt.UnixMilli())
 			if err == nil && shouldTrigger {
 				result.SetTriggered(shouldTrigger)
-			} else {
+			} else if err != nil {
 				result.SetError(err)
 			}
 			select {
@@ -348,10 +340,10 @@ func (csm *Engine) processTimedStopStrategies(update model.PricePoint) {
 func (csm *Engine) processFixedProfitStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetFixedTakeProfitStrategies()
 	for name, strategy := range strategies {
-		newThreshold, err := strategy.CalculateTakeProfit(update.NewPrice)
-		if err == nil {
+		shouldTrigger, err := strategy.ShouldTriggerTakeProfit(update.NewPrice)
+		newThreshold, calcErr := strategy.CalculateTakeProfit(update.NewPrice)
+		if calcErr == nil {
 			result := result.NewGeneral(name, "Fixed", "TakeProfit", update.NewPrice, newThreshold, update.UpdatedAt, time.Duration(0))
-			shouldTrigger, err := strategy.ShouldTriggerTakeProfit(update.NewPrice)
 			if err == nil {
 				result.SetTriggered(shouldTrigger)
 			} else {
@@ -369,11 +361,11 @@ func (csm *Engine) processFixedProfitStrategies(update model.PricePoint) {
 func (csm *Engine) processTimedProfitStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetTimedTakeProfitStrategies()
 	for name, strategy := range strategies {
-		timeThreshold, err := strategy.GetTimeThreshold()
-		newThreshold, err := strategy.CalculateTakeProfit(update.NewPrice)
-		if err == nil {
+		timeThreshold, _ := strategy.GetTimeThreshold()
+		shouldTrigger, err := strategy.ShouldTriggerTakeProfit(update.NewPrice, update.UpdatedAt.UnixMilli())
+		newThreshold, calcErr := strategy.CalculateTakeProfit(update.NewPrice)
+		if calcErr == nil {
 			result := result.NewGeneral(name, "Timed", "TakeProfit", update.NewPrice, newThreshold, update.UpdatedAt, time.Duration(timeThreshold))
-			shouldTrigger, err := strategy.ShouldTriggerTakeProfit(update.NewPrice, update.UpdatedAt.UnixMilli())
 			if err == nil {
 				result.SetTriggered(shouldTrigger)
 			} else {
@@ -391,15 +383,21 @@ func (csm *Engine) processTimedProfitStrategies(update model.PricePoint) {
 func (csm *Engine) processHybridFixedStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetHybridStrategies()
 	for name, strategy := range strategies {
-		newStop, newProfit, err := strategy.Calculate(update.NewPrice)
-		if err == nil {
-			result := result.NewHybrid(name, "Fixed", "Hybrid", newStop, newProfit, update.NewPrice, update.UpdatedAt, time.Duration(0))
-			shouldTrigger, err := strategy.ShouldTriggerStopLoss(update.NewPrice)
-			if err == nil {
-				result.SetTriggered(shouldTrigger)
-			} else {
-				result.SetError(err)
+		shouldTriggerSL, errSL := strategy.ShouldTriggerStopLoss(update.NewPrice)
+		shouldTriggerTP, errTP := strategy.ShouldTriggerTakeProfit(update.NewPrice)
+		newStop, newProfit, calcErr := strategy.Calculate(update.NewPrice)
+		if calcErr == nil {
+			result := result.NewHybrid(name, "Fixed", update.NewPrice, newStop, newProfit, update.UpdatedAt, time.Duration(0))
+			if errSL == nil && shouldTriggerSL {
+				result.SetTriggered(true, "StopLoss")
+			} else if errTP == nil && shouldTriggerTP {
+				result.SetTriggered(true, "TakeProfit")
+			} else if errSL != nil {
+				result.SetError(errSL)
+			} else if errTP != nil {
+				result.SetError(errTP)
 			}
+
 			select {
 			case csm.execution.hybridResults <- *result:
 			case <-csm.ctx.Done():
@@ -412,15 +410,21 @@ func (csm *Engine) processHybridFixedStrategies(update model.PricePoint) {
 func (csm *Engine) processHybridTimedStrategies(update model.PricePoint) {
 	strategies := csm.portfolio.GetHybridStrategies()
 	for name, strategy := range strategies {
-		newStop, newProfit, err := strategy.Calculate(update.NewPrice)
-		if err == nil {
-			result := result.NewHybrid(name, "Timed", "Hybrid", newStop, newProfit, update.NewPrice, update.UpdatedAt, time.Duration(0))
-			shouldTrigger, err := strategy.ShouldTriggerStopLoss(update.NewPrice)
-			if err == nil {
-				result.SetTriggered(shouldTrigger)
-			} else {
-				result.SetError(err)
+		shouldTriggerSL, errSL := strategy.ShouldTriggerStopLoss(update.NewPrice)
+		shouldTriggerTP, errTP := strategy.ShouldTriggerTakeProfit(update.NewPrice)
+		newStop, newProfit, calcErr := strategy.Calculate(update.NewPrice)
+		if calcErr == nil {
+			result := result.NewHybrid(name, "Timed", update.NewPrice, newStop, newProfit, update.UpdatedAt, time.Duration(0))
+			if errSL == nil && shouldTriggerSL {
+				result.SetTriggered(true, "StopLoss")
+			} else if errTP == nil && shouldTriggerTP {
+				result.SetTriggered(true, "TakeProfit")
+			} else if errSL != nil {
+				result.SetError(errSL)
+			} else if errTP != nil {
+				result.SetError(errTP)
 			}
+
 			select {
 			case csm.execution.hybridResults <- *result:
 			case <-csm.ctx.Done():
@@ -446,7 +450,7 @@ func (csm *Engine) Collect(pricePoint model.PricePoint, callback func()) {
 	for _, c := range channels {
 		select {
 		case c.ch <- pricePoint:
-			log.Printf("Sent to %s channel \n", c.name)
+			// log.Printf("Sent to %s channel \n", c.name)
 		default:
 			callback()
 		}

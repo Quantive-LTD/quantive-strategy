@@ -25,7 +25,17 @@ var (
 	errATRInvalid          = errors.New("ATR must be greater than 0")
 )
 
-type ATR struct {
+// FixedATRStop represents an ATR-based stop loss strategy
+type FixedATRStop struct {
+	stoploss.BaseResolver
+	threshold  decimal.Decimal
+	lastPrice  decimal.Decimal
+	multiplier decimal.Decimal
+	currentATR decimal.Decimal
+}
+
+// FixedATRProfit represents an ATR-based take profit strategy
+type FixedATRProfit struct {
 	stoploss.BaseResolver
 	threshold  decimal.Decimal
 	lastPrice  decimal.Decimal
@@ -42,7 +52,7 @@ func NewFixedATRStop(entryPrice, atr, k decimal.Decimal, callback stoploss.Defau
 		return nil, errATRInvalid
 	}
 
-	return &ATR{
+	return &FixedATRStop{
 		lastPrice:  entryPrice,
 		currentATR: atr,
 		multiplier: k,
@@ -62,7 +72,7 @@ func NewFixedATRProfit(entryPrice, atr, k decimal.Decimal, callback stoploss.Def
 	if atr.LessThanOrEqual(decimal.Zero) {
 		return nil, errATRInvalid
 	}
-	return &ATR{
+	return &FixedATRProfit{
 		lastPrice:  entryPrice,
 		currentATR: atr,
 		multiplier: k,
@@ -74,8 +84,17 @@ func NewFixedATRProfit(entryPrice, atr, k decimal.Decimal, callback stoploss.Def
 	}, nil
 }
 
-// UpdateATR updates the current ATR value
-func (a *ATR) UpdateATR(currentATR decimal.Decimal) error {
+// UpdateATR updates the current ATR value for stop loss
+func (a *FixedATRStop) UpdateATR(currentATR decimal.Decimal) error {
+	if !a.Active {
+		return stoploss.ErrStatusInvalid
+	}
+	a.currentATR = currentATR
+	return nil
+}
+
+// UpdateATR updates the current ATR value for take profit
+func (a *FixedATRProfit) UpdateATR(currentATR decimal.Decimal) error {
 	if !a.Active {
 		return stoploss.ErrStatusInvalid
 	}
@@ -84,7 +103,7 @@ func (a *ATR) UpdateATR(currentATR decimal.Decimal) error {
 }
 
 // CalculateStopLoss represents first update last price and calculate stop loss then update threshold
-func (a *ATR) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+func (a *FixedATRStop) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	if !a.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -94,7 +113,7 @@ func (a *ATR) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, 
 }
 
 // CalculateTakeProfit represents first update last price and calculate take profit then update threshold
-func (a *ATR) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+func (a *FixedATRProfit) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	if !a.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -104,7 +123,7 @@ func (a *ATR) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal
 }
 
 // ShouldTriggerStopLoss checks if the stop loss should be triggered
-func (a *ATR) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
+func (a *FixedATRStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
 	if !a.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -119,7 +138,7 @@ func (a *ATR) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) 
 }
 
 // ShouldTriggerTakeProfit checks if the take profit should be triggered
-func (a *ATR) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, error) {
+func (a *FixedATRProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, error) {
 	if !a.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -134,7 +153,7 @@ func (a *ATR) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, error
 }
 
 // GetStopLoss returns the current stop loss threshold
-func (a *ATR) GetStopLoss() (decimal.Decimal, error) {
+func (a *FixedATRStop) GetStopLoss() (decimal.Decimal, error) {
 	if !a.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -142,7 +161,7 @@ func (a *ATR) GetStopLoss() (decimal.Decimal, error) {
 }
 
 // GetTakeProfit returns the current take profit threshold
-func (a *ATR) GetTakeProfit() (decimal.Decimal, error) {
+func (a *FixedATRProfit) GetTakeProfit() (decimal.Decimal, error) {
 	if !a.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -150,7 +169,7 @@ func (a *ATR) GetTakeProfit() (decimal.Decimal, error) {
 }
 
 // ReSetStopLosser resets the stop loss based on the current price
-func (a *ATR) ReSetStopLosser(currentPrice decimal.Decimal) error {
+func (a *FixedATRStop) ReSetStopLosser(currentPrice decimal.Decimal) error {
 	if !a.Active {
 		return stoploss.ErrStatusInvalid
 	}
@@ -161,7 +180,7 @@ func (a *ATR) ReSetStopLosser(currentPrice decimal.Decimal) error {
 }
 
 // ReSetTakeProfiter resets the take profit based on the current price
-func (a *ATR) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
+func (a *FixedATRProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
 	if !a.Active {
 		return stoploss.ErrStatusInvalid
 	}
