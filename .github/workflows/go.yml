@@ -59,7 +59,7 @@ jobs:
         run: mkdir -p build
 
       - name: Build binary
-        run: go build -o build/app ./cmd/app
+        run: go build -o build/app ./cmd
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
