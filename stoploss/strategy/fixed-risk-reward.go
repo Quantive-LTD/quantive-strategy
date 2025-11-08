@@ -20,7 +20,7 @@ import (
 	"github.com/wang900115/quant/stoploss"
 )
 
-type riskRewardRatio struct {
+type RiskRewardRatio struct {
 	stoploss.BaseResolver
 	LastPrice   decimal.Decimal
 	riskRatio   decimal.Decimal
@@ -36,7 +36,7 @@ func NewRiskRewardRatio(entryPrice, riskRatio, rewardRatio decimal.Decimal, call
 	if rewardRatio.IsNegative() || rewardRatio.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errStopLossRateInvalid
 	}
-	s := &riskRewardRatio{
+	s := &RiskRewardRatio{
 		LastPrice:   entryPrice,
 		riskRatio:   riskRatio,
 		rewardRatio: rewardRatio,
@@ -50,7 +50,7 @@ func NewRiskRewardRatio(entryPrice, riskRatio, rewardRatio decimal.Decimal, call
 	return s, nil
 }
 
-func (r *riskRewardRatio) Calculate(currentPrice decimal.Decimal) (decimal.Decimal, decimal.Decimal, error) {
+func (r *RiskRewardRatio) Calculate(currentPrice decimal.Decimal) (decimal.Decimal, decimal.Decimal, error) {
 	if !r.Active {
 		return decimal.Zero, decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -60,7 +60,7 @@ func (r *riskRewardRatio) Calculate(currentPrice decimal.Decimal) (decimal.Decim
 	return r.stopLoss, r.takeProfit, nil
 }
 
-func (r *riskRewardRatio) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
+func (r *RiskRewardRatio) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
 	if !r.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -74,7 +74,7 @@ func (r *riskRewardRatio) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (b
 	return false, nil
 }
 
-func (r *riskRewardRatio) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, error) {
+func (r *RiskRewardRatio) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, error) {
 	if !r.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -88,21 +88,21 @@ func (r *riskRewardRatio) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) 
 	return false, nil
 }
 
-func (r *riskRewardRatio) GetStopLoss() (decimal.Decimal, error) {
+func (r *RiskRewardRatio) GetStopLoss() (decimal.Decimal, error) {
 	if !r.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
 	return r.stopLoss, nil
 }
 
-func (r *riskRewardRatio) GetTakeProfit() (decimal.Decimal, error) {
+func (r *RiskRewardRatio) GetTakeProfit() (decimal.Decimal, error) {
 	if !r.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
 	return r.takeProfit, nil
 }
 
-func (r *riskRewardRatio) ReSet(newPrice decimal.Decimal) error {
+func (r *RiskRewardRatio) ReSet(newPrice decimal.Decimal) error {
 	if !r.Active {
 		return stoploss.ErrStatusInvalid
 	}

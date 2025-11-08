@@ -78,4 +78,5 @@ type TakeProfitCond interface {
 type TakeProfitCondT interface {
 	ShouldTriggerTakeProfit(currentPrice decimal.Decimal, timestamp int64) (bool, error)
 	GetTakeProfit() (decimal.Decimal, error)
+	GetTimeThreshold() (int64, error)
 }

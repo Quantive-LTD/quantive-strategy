@@ -27,7 +27,7 @@ var (
 	errTakeProfitRateInvalid = errors.New("take profit rate must be between 0 and 1")
 )
 
-type fixedPercent struct {
+type FixedPercent struct {
 	stoploss.BaseResolver
 	threshold    decimal.Decimal
 	tolerancePct decimal.Decimal
@@ -39,7 +39,7 @@ func NewFixedPercentStop(entryPrice, stopLossPct decimal.Decimal, callback stopl
 	if stopLossPct.IsNegative() || stopLossPct.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errStopLossRateInvalid
 	}
-	s := &fixedPercent{
+	s := &FixedPercent{
 		LastPrice:    entryPrice,
 		threshold:    entryPrice.Mul(decimal.NewFromInt(1).Sub(stopLossPct)),
 		tolerancePct: stopLossPct,
@@ -56,7 +56,7 @@ func NewFixedPercentProfit(entryPrice, takeProfitPct decimal.Decimal, callback s
 	if takeProfitPct.IsNegative() || takeProfitPct.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errTakeProfitRateInvalid
 	}
-	s := &fixedPercent{
+	s := &FixedPercent{
 		LastPrice:    entryPrice,
 		threshold:    entryPrice.Mul(decimal.NewFromInt(1).Add(takeProfitPct)),
 		tolerancePct: takeProfitPct,
@@ -69,7 +69,7 @@ func NewFixedPercentProfit(entryPrice, takeProfitPct decimal.Decimal, callback s
 }
 
 // CalculateStopLoss represents first update last price and calculate stop loss then update threshold
-func (f *fixedPercent) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+func (f *FixedPercent) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	if !f.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -79,7 +79,7 @@ func (f *fixedPercent) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.
 }
 
 // CalculateTakeProfit represents first update last price and calculate take profit then update threshold
-func (f *fixedPercent) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+func (f *FixedPercent) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	if !f.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -89,7 +89,7 @@ func (f *fixedPercent) CalculateTakeProfit(currentPrice decimal.Decimal) (decima
 }
 
 // ShouldTriggerStopLoss checks if the stop loss should be triggered
-func (f *fixedPercent) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
+func (f *FixedPercent) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
 	if !f.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -104,7 +104,7 @@ func (f *fixedPercent) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool
 }
 
 // ShouldTriggerTakeProfit checks if the take profit should be triggered
-func (f *fixedPercent) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, error) {
+func (f *FixedPercent) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, error) {
 	if !f.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -119,7 +119,7 @@ func (f *fixedPercent) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bo
 }
 
 // GetStopLoss returns the current stop loss threshold
-func (f *fixedPercent) GetStopLoss() (decimal.Decimal, error) {
+func (f *FixedPercent) GetStopLoss() (decimal.Decimal, error) {
 	if !f.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -127,7 +127,7 @@ func (f *fixedPercent) GetStopLoss() (decimal.Decimal, error) {
 }
 
 // GetTakeProfit returns the current take profit threshold
-func (f *fixedPercent) GetTakeProfit() (decimal.Decimal, error) {
+func (f *FixedPercent) GetTakeProfit() (decimal.Decimal, error) {
 	if !f.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -135,7 +135,7 @@ func (f *fixedPercent) GetTakeProfit() (decimal.Decimal, error) {
 }
 
 // ReSet resets the stop loss based on the current price
-func (f *fixedPercent) ReSetStopLosser(currentPrice decimal.Decimal) error {
+func (f *FixedPercent) ReSetStopLosser(currentPrice decimal.Decimal) error {
 	if !f.Active {
 		return stoploss.ErrStatusInvalid
 	}
@@ -146,7 +146,7 @@ func (f *fixedPercent) ReSetStopLosser(currentPrice decimal.Decimal) error {
 }
 
 // ReSetTakeProfiter resets the take profit based on the current price
-func (f *fixedPercent) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
+func (f *FixedPercent) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
 	if !f.Active {
 		return stoploss.ErrStatusInvalid
 	}

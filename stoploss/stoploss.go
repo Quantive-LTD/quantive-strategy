@@ -62,6 +62,7 @@ type StopLoss interface {
 type StopLossCondT interface {
 	ShouldTriggerStopLoss(currentPrice decimal.Decimal, timestamp int64) (bool, error)
 	GetStopLoss() (decimal.Decimal, error)
+	GetTimeThreshold() (int64, error)
 }
 
 // StopLoss Condition
