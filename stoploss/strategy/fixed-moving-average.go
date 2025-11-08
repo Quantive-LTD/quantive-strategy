@@ -25,7 +25,17 @@ var (
 	errOffsetInvalid = errors.New("offset percentage must be between 0 and 1")
 )
 
-type MovingAverage struct {
+// FixedMovingAverageStop represents a moving average based stop loss strategy
+type FixedMovingAverageStop struct {
+	stoploss.BaseResolver
+	threshold     decimal.Decimal
+	lastPrice     decimal.Decimal
+	movingAverage decimal.Decimal
+	offsetPercent decimal.Decimal
+}
+
+// FixedMovingAverageProfit represents a moving average based take profit strategy
+type FixedMovingAverageProfit struct {
 	stoploss.BaseResolver
 	threshold     decimal.Decimal
 	lastPrice     decimal.Decimal
@@ -41,7 +51,7 @@ func NewFixedMovingAverageStop(entryPrice, initialMA, offsetPercent decimal.Deci
 	if offsetPercent.IsNegative() || offsetPercent.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errOffsetInvalid
 	}
-	return &MovingAverage{
+	return &FixedMovingAverageStop{
 		lastPrice:     entryPrice,
 		movingAverage: initialMA,
 		offsetPercent: offsetPercent,
@@ -61,7 +71,7 @@ func NewFixedMovingAverageProfit(entryPrice, initialMA, offsetPercent decimal.De
 	if offsetPercent.IsNegative() || offsetPercent.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errOffsetInvalid
 	}
-	return &MovingAverage{
+	return &FixedMovingAverageProfit{
 		lastPrice:     entryPrice,
 		movingAverage: initialMA,
 		offsetPercent: offsetPercent,
@@ -73,8 +83,16 @@ func NewFixedMovingAverageProfit(entryPrice, initialMA, offsetPercent decimal.De
 	}, nil
 }
 
-// SetMA sets the current moving average value
-func (ma *MovingAverage) SetMA(value decimal.Decimal) {
+// SetMA sets the current moving average value for stop loss
+func (ma *FixedMovingAverageStop) SetMA(value decimal.Decimal) {
+	if !ma.Active {
+		return
+	}
+	ma.movingAverage = value
+}
+
+// SetMA sets the current moving average value for take profit
+func (ma *FixedMovingAverageProfit) SetMA(value decimal.Decimal) {
 	if !ma.Active {
 		return
 	}
@@ -82,7 +100,7 @@ func (ma *MovingAverage) SetMA(value decimal.Decimal) {
 }
 
 // CalculateStopLoss represents first update last price and calculate stop loss then update threshold
-func (ma *MovingAverage) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+func (ma *FixedMovingAverageStop) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	if !ma.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -92,7 +110,7 @@ func (ma *MovingAverage) CalculateStopLoss(currentPrice decimal.Decimal) (decima
 }
 
 // CalculateTakeProfit represents first update last price and calculate take profit then update threshold
-func (ma *MovingAverage) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+func (ma *FixedMovingAverageProfit) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	if !ma.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -102,7 +120,7 @@ func (ma *MovingAverage) CalculateTakeProfit(currentPrice decimal.Decimal) (deci
 }
 
 // ShouldTriggerStopLoss checks if the stop loss should be triggered
-func (ma *MovingAverage) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
+func (ma *FixedMovingAverageStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error) {
 	if !ma.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -118,7 +136,7 @@ func (ma *MovingAverage) ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bo
 }
 
 // ShouldTriggerTakeProfit checks if the take profit should be triggered
-func (ma *MovingAverage) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, error) {
+func (ma *FixedMovingAverageProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (bool, error) {
 	if !ma.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -133,7 +151,7 @@ func (ma *MovingAverage) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) (
 }
 
 // GetStopLoss returns the current stop loss threshold
-func (ma *MovingAverage) GetStopLoss() (decimal.Decimal, error) {
+func (ma *FixedMovingAverageStop) GetStopLoss() (decimal.Decimal, error) {
 	if !ma.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -141,7 +159,7 @@ func (ma *MovingAverage) GetStopLoss() (decimal.Decimal, error) {
 }
 
 // GetTakeProfit returns the current take profit threshold
-func (ma *MovingAverage) GetTakeProfit() (decimal.Decimal, error) {
+func (ma *FixedMovingAverageProfit) GetTakeProfit() (decimal.Decimal, error) {
 	if !ma.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -149,7 +167,7 @@ func (ma *MovingAverage) GetTakeProfit() (decimal.Decimal, error) {
 }
 
 // ReSetStopLosser resets the stop loss based on the current price
-func (ma *MovingAverage) ReSetStopLosser(currentPrice decimal.Decimal) error {
+func (ma *FixedMovingAverageStop) ReSetStopLosser(currentPrice decimal.Decimal) error {
 	if !ma.Active {
 		return stoploss.ErrStatusInvalid
 	}
@@ -161,7 +179,7 @@ func (ma *MovingAverage) ReSetStopLosser(currentPrice decimal.Decimal) error {
 }
 
 // ReSetTakeProfiter resets the take profit based on the current price
-func (ma *MovingAverage) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
+func (ma *FixedMovingAverageProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
 	if !ma.Active {
 		return stoploss.ErrStatusInvalid
 	}

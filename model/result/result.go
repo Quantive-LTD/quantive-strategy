@@ -46,8 +46,8 @@ type StrategyHybridResult struct {
 	LastTime      time.Time
 	LastPrice     decimal.Decimal
 	TimeThreshold time.Duration
-	stopStat      StrategyStat
-	profitStat    StrategyStat
+	StopStat      StrategyStat
+	ProfitStat    StrategyStat
 	Error         error
 }
 
@@ -72,8 +72,8 @@ func (sr *StrategyHybridResult) Marshall() map[string]interface{} {
 		"TriggerType":   sr.TriggerType,
 		"LastTime":      sr.LastTime,
 		"TimeThreshold": sr.TimeThreshold,
-		"StopStat":      sr.stopStat,
-		"ProfitStat":    sr.profitStat,
+		"StopStat":      sr.StopStat,
+		"ProfitStat":    sr.ProfitStat,
 		"Error":         sr.Error,
 	}
 }
@@ -92,18 +92,17 @@ func NewGeneral(strategyName, strategyType, triggerType string, lastPrice, price
 	}
 }
 
-func NewHybrid(strategyName, strategyType, triggerType string, LastPrice, stopPriceThreshold, profitPriceThreshold decimal.Decimal, lastTime time.Time, timeThreshold time.Duration) *StrategyHybridResult {
+func NewHybrid(strategyName, strategyType string, LastPrice, stopPriceThreshold, profitPriceThreshold decimal.Decimal, lastTime time.Time, timeThreshold time.Duration) *StrategyHybridResult {
 	return &StrategyHybridResult{
 		StrategyName:  strategyName,
 		StrategyType:  strategyType,
-		TriggerType:   triggerType,
 		LastTime:      lastTime,
 		TimeThreshold: timeThreshold,
 		LastPrice:     LastPrice,
-		stopStat: StrategyStat{
+		StopStat: StrategyStat{
 			PriceThreshold: stopPriceThreshold,
 		},
-		profitStat: StrategyStat{
+		ProfitStat: StrategyStat{
 			PriceThreshold: profitPriceThreshold,
 		},
 	}
@@ -117,8 +116,9 @@ func (sr *StrategyGeneralResult) SetError(err error) {
 	sr.Error = err
 }
 
-func (sr *StrategyHybridResult) SetTriggered(triggered bool) {
+func (sr *StrategyHybridResult) SetTriggered(triggered bool, triggerType string) {
 	sr.Triggered = triggered
+	sr.TriggerType = triggerType
 }
 
 func (sr *StrategyHybridResult) SetError(err error) {
@@ -154,8 +154,8 @@ func (sr *StrategyHybridResult) String() string {
 		sr.Triggered,
 		sr.TriggerType,
 		sr.LastPrice.String(),
-		sr.stopStat.PriceThreshold.String(),
-		sr.profitStat.PriceThreshold.String(),
+		sr.StopStat.PriceThreshold.String(),
+		sr.ProfitStat.PriceThreshold.String(),
 		sr.LastTime.String(),
 		sr.TimeThreshold.String(),
 		errorStr,

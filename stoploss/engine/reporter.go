@@ -66,11 +66,11 @@ func (rp *Report) ProcessHybridResult(res <-chan result.StrategyHybridResult) {
 
 		if r.Triggered {
 			rp.triggerCount++
-			fmt.Printf("🔔 HYBRID TRIGGER: %s at price %s\n",
-				r.StrategyName, r.LastPrice.String())
+			fmt.Printf("🔔 HYBRID TRIGGER: %s at price %s stoploss at %s take profit at %s\n",
+				r.StrategyName, r.LastPrice.String(), r.StopStat.PriceThreshold.String(), r.ProfitStat.PriceThreshold.String())
 		} else {
-			fmt.Printf("📊 HYBRID UPDATE: %s at price %s\n",
-				r.StrategyName, r.LastPrice.String())
+			fmt.Printf("📊 HYBRID UPDATE: %s at price %s stoploss at %s take profit at %s\n",
+				r.StrategyName, r.LastPrice.String(), r.StopStat.PriceThreshold.String(), r.ProfitStat.PriceThreshold.String())
 		}
 	}
 }

@@ -48,23 +48,6 @@ func StragetyUsage() {
 
 	fmt.Println("Registering strategies...")
 
-	// Register Fixed Stop Loss strategies
-	percentStopStrategy, _ := strategy.NewFixedPercentStop(
-		entryPrice,
-		decimal.NewFromFloat(0.05), // 5% stop loss
-		callback,
-	)
-	manager.RegisterStrategy("Fixed-Percent-Stop-5%", percentStopStrategy)
-
-	// Register Timed Stop Loss strategies
-	timedTrailingStrategy, _ := strategy.NewTrailingTimeBasedStop(
-		entryPrice,
-		decimal.NewFromFloat(0.04), // 4% tolerance
-		int64(300),                 // 5 minutes time threshold
-		callback,
-	)
-	manager.RegisterStrategy("Timed-Trailing-4%", timedTrailingStrategy)
-
 	// Register Fixed Take Profit strategies
 	percentProfitStrategy, _ := strategy.NewFixedPercentProfit(
 		entryPrice,
@@ -73,34 +56,30 @@ func StragetyUsage() {
 	)
 	manager.RegisterStrategy("Fixed-Percent-Profit-8%", percentProfitStrategy)
 
-	// Register Hybrid strategies
-	riskRewardStrategy, _ := strategy.NewRiskRewardRatio(
+	// Register Fixed Stop Loss strategies
+	percentStopStrategy, _ := strategy.NewFixedPercentStop(
+		entryPrice,
+		decimal.NewFromFloat(0.05), // 5% stop loss
+		callback,
+	)
+	manager.RegisterStrategy("Fixed-Percent-Stop-5%", percentStopStrategy)
+
+	//  Register Risk/Reward Hybrid Strategy
+	hybridStrategy, _ := strategy.NewRiskRewardRatio(
 		entryPrice,
 		decimal.NewFromFloat(0.03), // 3% risk
-		decimal.NewFromFloat(0.06), // 6% reward (1:2 ratio)
+		decimal.NewFromFloat(0.09), // 9% reward
 		callback,
 	)
-	manager.RegisterStrategy("Risk-Reward-1:2", riskRewardStrategy)
+	manager.RegisterStrategy("Hybrid-Fixed-Risk-Reward-3-9%", hybridStrategy)
 
-	structureSwingStrategy, _ := strategy.NewStructureSwingStop(
-		20, // lookback period
-		entryPrice,
-		decimal.NewFromFloat(0.01), // 1% swing distance
-		decimal.NewFromFloat(0.05), // 5% stop loss
-		decimal.NewFromFloat(0.10), // 10% take profit
-		true,                       // long position
-		callback,
-	)
-	manager.RegisterStrategy("Structure-Swing", structureSwingStrategy)
-
-	log.Printf("Total strategies registered: %+v\n", manager)
-	// Start the manager (launches 6 goroutines)
-	log.Println("Starting manager with 6 goroutines...")
+	// Start the manager
+	log.Println("Starting manager with goroutines...")
 	manager.Start()
 
 	// Simulate price movements
 	log.Println("\nSimulating price movements...")
-	prices := []float64{100.0, 102.0, 101.0, 99.0, 98.5, 97.0, 95.0, 93.0, 105.0, 108.0}
+	prices := []float64{100.0, 102.0, 101.0, 99.0, 98.5, 70.0, 75.0, 80.0, 86.4, 94}
 
 	for i, price := range prices {
 		log.Printf("\n--- Price Update #%d: $%.2f ---\n", i+1, price)
