@@ -75,3 +75,16 @@ The examples include:
 - Processing real-time price updates
 - Implementing custom callbacks
 - Complete working demos
+
+
+## License
+
+This project is dual-licensed under:
+
+- **MIT License** – for individuals, researchers, and open-source developers.  
+- **GNU AGPLv3 License** – for organizations deploying this software as a network service (e.g., SaaS).
+
+You may choose which license to apply.
+
+See [LICENSE-MIT](./LICENSE-MIT) and [LICENSE-AGPLv3](./LICENSE-AGPLv3) for details.
+
