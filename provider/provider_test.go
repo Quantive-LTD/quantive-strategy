@@ -1,18 +1,18 @@
 //go:build integration
 // +build integration
 
-// Copyright 2025 Quantive. All rights reserved.
-
-// Licensed under the MIT License (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-// https://opensource.org/licenses/MIT
+// Copyright (C) 2025 Quantive
+//
+// SPDX-License-Identifier: MIT OR AGPL-3.0-or-later
+//
+// This file is part of the Decision Engine project.
+// You may choose to use this file under the terms of either
+// the MIT License or the GNU Affero General Public License v3.0 or later.
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// See the LICENSE files for more details.
 
 package provider
 
