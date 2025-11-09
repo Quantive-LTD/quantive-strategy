@@ -13,7 +13,10 @@
 
 package main
 
+import "github.com/wang900115/quant/example"
+
 func main() {
 	// This is just a placeholder main function.
 	// The actual examples and tests are located in the example and test files.
+	example.StrategyUsage()
 }

@@ -41,6 +41,20 @@ type FixedPercentProfit struct {
 	LastPrice    decimal.Decimal
 }
 
+// TimedPercentStop represents a timed stop loss strategy based on fixed percentage
+type TimedPercentStop struct {
+	FixedPercentStop
+	TriggerTime   int64
+	TimeThreshold int64
+}
+
+// TimedPercentProfit represents a timed take profit strategy based on fixed percentage
+type TimedPercentProfit struct {
+	FixedPercentProfit
+	TriggerTime   int64
+	TimeThreshold int64
+}
+
 // NewFixedPercentStop creates a FixedPercentStopLoss base on fixed percentage
 func NewFixedPercentStop(entryPrice, stopLossPct decimal.Decimal, callback stoploss.DefaultCallback) (stoploss.FixedStopLoss, error) {
 	if stopLossPct.IsNegative() || stopLossPct.GreaterThan(decimal.NewFromInt(1)) {
@@ -73,6 +87,100 @@ func NewFixedPercentProfit(entryPrice, takeProfitPct decimal.Decimal, callback s
 		},
 	}
 	return s, nil
+}
+
+func NewTimedPercentStop(entryPrice, stopLossPct decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.TimeBasedStopLoss, error) {
+	if stopLossPct.IsNegative() || stopLossPct.GreaterThan(decimal.NewFromInt(1)) {
+		return nil, errStopLossRateInvalid
+	}
+	s := &TimedPercentStop{
+		FixedPercentStop: FixedPercentStop{
+			LastPrice:    entryPrice,
+			threshold:    entryPrice.Mul(decimal.NewFromInt(1).Sub(stopLossPct)),
+			tolerancePct: stopLossPct,
+			BaseResolver: stoploss.BaseResolver{
+				Active:   true,
+				Callback: callback,
+			},
+		},
+		TimeThreshold: timeThreshold,
+	}
+	return s, nil
+}
+
+func NewTimedPercentProfit(entryPrice, takeProfitPct decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.TimeBasedTakeProfit, error) {
+	if takeProfitPct.IsNegative() || takeProfitPct.GreaterThan(decimal.NewFromInt(1)) {
+		return nil, errTakeProfitRateInvalid
+	}
+	s := &TimedPercentProfit{
+		FixedPercentProfit: FixedPercentProfit{
+			LastPrice:    entryPrice,
+			threshold:    entryPrice.Mul(decimal.NewFromInt(1).Add(takeProfitPct)),
+			tolerancePct: takeProfitPct,
+			BaseResolver: stoploss.BaseResolver{
+				Active:   true,
+				Callback: callback,
+			},
+		},
+		TimeThreshold: timeThreshold,
+	}
+	return s, nil
+}
+
+func (t *TimedPercentStop) GetTimeThreshold() (int64, error) {
+	if !t.Active {
+		return 0, stoploss.ErrStatusInvalid
+	}
+	return t.TimeThreshold, nil
+}
+
+func (t *TimedPercentProfit) GetTimeThreshold() (int64, error) {
+	if !t.Active {
+		return 0, stoploss.ErrStatusInvalid
+	}
+	return t.TimeThreshold, nil
+}
+
+func (t *TimedPercentStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
+	if !t.Active {
+		return false, stoploss.ErrStatusInvalid
+	}
+	if currentPrice.LessThanOrEqual(t.threshold) {
+		if t.TriggerTime == 0 {
+			t.TriggerTime = currentTime
+		}
+		if currentTime-t.TriggerTime >= t.TimeThreshold {
+			err := t.Trigger(stoploss.TRIGGERED_REASON_TIMED_PERCENTCILE_STOPLOSS)
+			if err != nil {
+				return true, stoploss.ErrCallBackFail
+			}
+			return true, nil
+		}
+	} else {
+		t.TriggerTime = 0
+	}
+	return false, nil
+}
+
+func (t *TimedPercentProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
+	if !t.Active {
+		return false, stoploss.ErrStatusInvalid
+	}
+	if currentPrice.GreaterThanOrEqual(t.threshold) {
+		if t.TriggerTime == 0 {
+			t.TriggerTime = currentTime
+		}
+		if currentTime-t.TriggerTime >= t.TimeThreshold {
+			err := t.Trigger(stoploss.TRIGGERED_REASON_TIMED_PERCENTCILE_TAKEPROFIT)
+			if err != nil {
+				return true, stoploss.ErrCallBackFail
+			}
+			return true, nil
+		}
+	} else {
+		t.TriggerTime = 0
+	}
+	return false, nil
 }
 
 // CalculateStopLoss represents first update last price and calculate stop loss then update threshold
@@ -160,5 +268,27 @@ func (f *FixedPercentProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) err
 	f.LastPrice = currentPrice
 	f.threshold = currentPrice.Mul(decimal.NewFromInt(1).Add(f.tolerancePct))
 	f.Active = true
+	return nil
+}
+
+func (t *TimedPercentStop) ReSetStopLosser(currentPrice decimal.Decimal) error {
+	if !t.Active {
+		return stoploss.ErrStatusInvalid
+	}
+	t.LastPrice = currentPrice
+	t.threshold = currentPrice.Mul(decimal.NewFromInt(1).Sub(t.tolerancePct))
+	t.TriggerTime = 0
+	t.Active = true
+	return nil
+}
+
+func (t *TimedPercentProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
+	if !t.Active {
+		return stoploss.ErrStatusInvalid
+	}
+	t.LastPrice = currentPrice
+	t.threshold = currentPrice.Mul(decimal.NewFromInt(1).Add(t.tolerancePct))
+	t.TriggerTime = 0
+	t.Active = true
 	return nil
 }

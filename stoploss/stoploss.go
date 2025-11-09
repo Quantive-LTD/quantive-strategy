@@ -42,9 +42,21 @@ type FixedVolatilityStopLoss interface {
 	UpdateATR(currentATR decimal.Decimal) error
 }
 
+// Timed-ATR
+type TimedVolatilityStopLoss interface {
+	TimeBasedStopLoss
+	UpdateATR(currentATR decimal.Decimal) error
+}
+
 // Fixed-Moving Average
 type FixedMAStopLoss interface {
 	FixedStopLoss
+	SetMA(value decimal.Decimal)
+}
+
+// Timed-Moving Average
+type TimedMAStopLoss interface {
+	TimeBasedStopLoss
 	SetMA(value decimal.Decimal)
 }
 
@@ -52,6 +64,7 @@ type FixedMAStopLoss interface {
 type StopLoss interface {
 	CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error)
 	Trigger(reason string) error
+	GetStopLoss() (decimal.Decimal, error)
 	ReSetStopLosser(currentPrice decimal.Decimal) error
 	Deactivate() error
 }
@@ -59,14 +72,12 @@ type StopLoss interface {
 // StopLoss Condition with timestamp
 type StopLossCondT interface {
 	ShouldTriggerStopLoss(currentPrice decimal.Decimal, timestamp int64) (bool, error)
-	GetStopLoss() (decimal.Decimal, error)
 	GetTimeThreshold() (int64, error)
 }
 
 // StopLoss Condition
 type StopLossCond interface {
 	ShouldTriggerStopLoss(currentPrice decimal.Decimal) (bool, error)
-	GetStopLoss() (decimal.Decimal, error)
 }
 
 type DefaultCallback func(reason string) error

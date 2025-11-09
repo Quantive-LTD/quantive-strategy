@@ -21,9 +21,14 @@ import (
 )
 
 var (
-	errATRStopLossKInvalid = errors.New("stop loss k must be greater than 0")
-	errATRInvalid          = errors.New("ATR must be greater than 0")
+	errTimeThresholdInvalid = errors.New("time threshold must be greater than zero")
+	errATRStopLossKInvalid  = errors.New("stop loss k must be greater than 0")
+	errATRInvalid           = errors.New("ATR must be greater than 0")
 )
+
+type ATR interface {
+	FixedATRProfit | FixedATRStop | TimedATRProfit | TimedATRStop
+}
 
 // FixedATRStop represents an ATR-based stop loss strategy
 type FixedATRStop struct {
@@ -43,6 +48,105 @@ type FixedATRProfit struct {
 	currentATR decimal.Decimal
 }
 
+// TimedATRStop represents a time-based ATR stop loss strategy
+type TimedATRStop struct {
+	FixedATRStop
+	TimeThreshold int64
+	TriggerTime   int64
+}
+
+// GetTimeThreshold returns the time threshold for timed strategies
+func (t *TimedATRStop) GetTimeThreshold() (int64, error) {
+	return t.TimeThreshold, nil
+}
+
+// ShouldTriggerStopLoss checks if the timed stop loss should be triggered
+func (t *TimedATRStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal, currentTimestamp int64) (bool, error) {
+	if !t.Active {
+		return false, stoploss.ErrStatusInvalid
+	}
+	if currentPrice.LessThanOrEqual(t.threshold) {
+		if t.TriggerTime == 0 {
+			t.TriggerTime = currentTimestamp
+		} else if currentTimestamp-t.TriggerTime >= t.TimeThreshold {
+			err := t.Trigger(stoploss.TRIGGERED_REASON_TIMED_ATR_STOPLOSS)
+			if err != nil {
+				return true, stoploss.ErrCallBackFail
+			}
+			return true, nil
+		}
+	} else {
+		t.TriggerTime = 0
+	}
+	return false, nil
+}
+
+// ReSetStopLosser resets the stop loss based on the current price
+func (t *TimedATRStop) ReSetStopLosser(currentPrice decimal.Decimal) error {
+	if !t.Active {
+		return stoploss.ErrStatusInvalid
+	}
+	t.lastPrice = currentPrice
+	t.threshold = currentPrice.Sub(t.currentATR.Mul(t.multiplier))
+	t.Active = true
+	t.TriggerTime = 0
+	return nil
+}
+
+// TimedATRProfit represents a time-based ATR take profit strategy
+type TimedATRProfit struct {
+	FixedATRProfit
+	TimeThreshold int64
+	TriggerTime   int64
+}
+
+// UpdateATR updates the current ATR value for take profit
+func (a *TimedATRProfit) UpdateATR(currentATR decimal.Decimal) error {
+	if !a.Active {
+		return stoploss.ErrStatusInvalid
+	}
+	a.currentATR = currentATR
+	return nil
+}
+
+// GetTimeThreshold returns the time threshold for timed strategies
+func (t *TimedATRProfit) GetTimeThreshold() (int64, error) {
+	return t.TimeThreshold, nil
+}
+
+// ShouldTriggerTakeProfit checks if the timed take profit should be triggered
+func (t *TimedATRProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decimal, currentTimestamp int64) (bool, error) {
+	if !t.Active {
+		return false, stoploss.ErrStatusInvalid
+	}
+	if currentPrice.GreaterThanOrEqual(t.threshold) {
+		if t.TriggerTime == 0 {
+			t.TriggerTime = currentTimestamp
+		} else if currentTimestamp-t.TriggerTime >= t.TimeThreshold {
+			err := t.Trigger(stoploss.TRIGGERED_REASON_TIMED_ATR_TAKEPROFIT)
+			if err != nil {
+				return true, stoploss.ErrCallBackFail
+			}
+			return true, nil
+		}
+	} else {
+		t.TriggerTime = 0
+	}
+	return false, nil
+}
+
+// ReSetTakeProfiter resets the take profit based on the current price
+func (t *TimedATRProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
+	if !t.Active {
+		return stoploss.ErrStatusInvalid
+	}
+	t.lastPrice = currentPrice
+	t.threshold = currentPrice.Add(t.currentATR.Mul(t.multiplier))
+	t.Active = true
+	t.TriggerTime = 0
+	return nil
+}
+
 // NewFixedATRStop creates a FixedVolatilityStopLoss based on ATR
 func NewFixedATRStop(entryPrice, atr, k decimal.Decimal, callback stoploss.DefaultCallback) (stoploss.FixedVolatilityStopLoss, error) {
 	if k.LessThanOrEqual(decimal.Zero) {
@@ -51,7 +155,6 @@ func NewFixedATRStop(entryPrice, atr, k decimal.Decimal, callback stoploss.Defau
 	if atr.LessThanOrEqual(decimal.Zero) {
 		return nil, errATRInvalid
 	}
-
 	return &FixedATRStop{
 		lastPrice:  entryPrice,
 		currentATR: atr,
@@ -81,6 +184,60 @@ func NewFixedATRProfit(entryPrice, atr, k decimal.Decimal, callback stoploss.Def
 			Active:   true,
 			Callback: callback,
 		},
+	}, nil
+}
+
+// NewTimedATRStop creates a TimedVolatilityStopLoss based on ATR and time threshold
+func NewTimedATRStop(entryPrice, atr, k decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.TimedVolatilityStopLoss, error) {
+	if k.LessThanOrEqual(decimal.Zero) {
+		return nil, errATRStopLossKInvalid
+	}
+	if atr.LessThanOrEqual(decimal.Zero) {
+		return nil, errATRInvalid
+	}
+	if timeThreshold <= 0 {
+		return nil, errTimeThresholdInvalid
+	}
+	return &TimedATRStop{
+		FixedATRStop: FixedATRStop{
+			lastPrice:  entryPrice,
+			currentATR: atr,
+			multiplier: k,
+			threshold:  entryPrice.Sub(atr.Mul(k)),
+			BaseResolver: stoploss.BaseResolver{
+				Active:   true,
+				Callback: callback,
+			},
+		},
+		TimeThreshold: timeThreshold,
+		TriggerTime:   0,
+	}, nil
+}
+
+// NewTimedATRProfit creates a TimedVolatilityTakeProfit based on ATR and time threshold
+func NewTimedATRProfit(entryPrice, atr, k decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.TimedVolatilityTakeProfit, error) {
+	if k.LessThanOrEqual(decimal.Zero) {
+		return nil, errATRStopLossKInvalid
+	}
+	if atr.LessThanOrEqual(decimal.Zero) {
+		return nil, errATRInvalid
+	}
+	if timeThreshold <= 0 {
+		return nil, errTimeThresholdInvalid
+	}
+	return &TimedATRProfit{
+		FixedATRProfit: FixedATRProfit{
+			lastPrice:  entryPrice,
+			currentATR: atr,
+			multiplier: k,
+			threshold:  entryPrice.Add(atr.Mul(k)),
+			BaseResolver: stoploss.BaseResolver{
+				Active:   true,
+				Callback: callback,
+			},
+		},
+		TimeThreshold: timeThreshold,
+		TriggerTime:   0,
 	}, nil
 }
 
