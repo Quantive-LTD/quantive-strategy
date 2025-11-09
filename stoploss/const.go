@@ -31,6 +31,8 @@ const (
 	TRIGGERED_REASON_TIMED_PERCENTCILE_TAKEPROFIT = "Fixed Percentile Take Profit Triggered with Time Delay"
 	TRIGGERED_REASON_TIMED_ATR_STOPLOSS           = "ATR Based Stop Loss Triggered with Time Delay"
 	TRIGGERED_REASON_TIMED_ATR_TAKEPROFIT         = "ATR Based Take Profit Triggered with Time Delay"
+	TRIGGERED_REASON_TIMED_MA_STOPLOSS            = "Moving Average Stop Loss Triggered with Time Delay"
+	TRIGGERED_REASON_TIMED_MA_TAKEPROFIT          = "Moving Average Take Profit Triggered with Time Delay"
 )
 
 const (

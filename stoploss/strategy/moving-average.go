@@ -43,6 +43,20 @@ type FixedMovingAverageProfit struct {
 	offsetPercent decimal.Decimal
 }
 
+// TimedMovingAverageStop represents a timed moving average based stop loss strategy
+type TimedMovingAverageStop struct {
+	FixedMovingAverageStop
+	TriggerTime   int64
+	TimeThreshold int64
+}
+
+// TimedMovingAverageProfit represents a timed moving average based take profit strategy
+type TimedMovingAverageProfit struct {
+	FixedMovingAverageProfit
+	TriggerTime   int64
+	TimeThreshold int64
+}
+
 // NewFixedMovingAverageStop creates a FixedMAStopLoss based on Moving Average
 func NewFixedMovingAverageStop(entryPrice, initialMA, offsetPercent decimal.Decimal, callback stoploss.DefaultCallback) (stoploss.FixedMAStopLoss, error) {
 	if initialMA.LessThanOrEqual(decimal.Zero) {
@@ -83,6 +97,50 @@ func NewFixedMovingAverageProfit(entryPrice, initialMA, offsetPercent decimal.De
 	}, nil
 }
 
+func NewTimedMovingAverageStop(entryPrice, initialMA, offsetPercent decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.TimedMAStopLoss, error) {
+	if initialMA.LessThanOrEqual(decimal.Zero) {
+		return nil, errMAInvalid
+	}
+	if offsetPercent.IsNegative() || offsetPercent.GreaterThan(decimal.NewFromInt(1)) {
+		return nil, errOffsetInvalid
+	}
+	return &TimedMovingAverageStop{
+		FixedMovingAverageStop: FixedMovingAverageStop{
+			lastPrice:     entryPrice,
+			movingAverage: initialMA,
+			offsetPercent: offsetPercent,
+			threshold:     initialMA.Mul(decimal.NewFromInt(1).Sub(offsetPercent)),
+			BaseResolver: stoploss.BaseResolver{
+				Active:   true,
+				Callback: callback,
+			},
+		},
+		TimeThreshold: timeThreshold,
+	}, nil
+}
+
+func NewTimedMovingAverageProfit(entryPrice, initialMA, offsetPercent decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.TimedMATakeProfit, error) {
+	if initialMA.LessThanOrEqual(decimal.Zero) {
+		return nil, errMAInvalid
+	}
+	if offsetPercent.IsNegative() || offsetPercent.GreaterThan(decimal.NewFromInt(1)) {
+		return nil, errOffsetInvalid
+	}
+	return &TimedMovingAverageProfit{
+		FixedMovingAverageProfit: FixedMovingAverageProfit{
+			lastPrice:     entryPrice,
+			movingAverage: initialMA,
+			offsetPercent: offsetPercent,
+			threshold:     initialMA.Mul(decimal.NewFromInt(1).Add(offsetPercent)),
+			BaseResolver: stoploss.BaseResolver{
+				Active:   true,
+				Callback: callback,
+			},
+		},
+		TimeThreshold: timeThreshold,
+	}, nil
+}
+
 // SetMA sets the current moving average value for stop loss
 func (ma *FixedMovingAverageStop) SetMA(value decimal.Decimal) {
 	if !ma.Active {
@@ -93,6 +151,22 @@ func (ma *FixedMovingAverageStop) SetMA(value decimal.Decimal) {
 
 // SetMA sets the current moving average value for take profit
 func (ma *FixedMovingAverageProfit) SetMA(value decimal.Decimal) {
+	if !ma.Active {
+		return
+	}
+	ma.movingAverage = value
+}
+
+// SetMA sets the current moving average value for timed stop loss
+func (ma *TimedMovingAverageStop) SetMA(value decimal.Decimal) {
+	if !ma.Active {
+		return
+	}
+	ma.movingAverage = value
+}
+
+// SetMA sets the current moving average value for timed take profit
+func (ma *TimedMovingAverageProfit) SetMA(value decimal.Decimal) {
 	if !ma.Active {
 		return
 	}
@@ -111,6 +185,26 @@ func (ma *FixedMovingAverageStop) CalculateStopLoss(currentPrice decimal.Decimal
 
 // CalculateTakeProfit represents first update last price and calculate take profit then update threshold
 func (ma *FixedMovingAverageProfit) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+	if !ma.Active {
+		return decimal.Zero, stoploss.ErrStatusInvalid
+	}
+	ma.lastPrice = currentPrice
+	ma.threshold = ma.movingAverage.Mul(decimal.NewFromInt(1).Add(ma.offsetPercent))
+	return ma.threshold, nil
+}
+
+// CalculateStopLoss represents first update last price and calculate stop loss then update threshold
+func (ma *TimedMovingAverageStop) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+	if !ma.Active {
+		return decimal.Zero, stoploss.ErrStatusInvalid
+	}
+	ma.lastPrice = currentPrice
+	ma.threshold = ma.movingAverage.Mul(decimal.NewFromInt(1).Sub(ma.offsetPercent))
+	return ma.threshold, nil
+}
+
+// CalculateTakeProfit represents first update last price and calculate take profit then update threshold
+func (ma *TimedMovingAverageProfit) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	if !ma.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -150,6 +244,67 @@ func (ma *FixedMovingAverageProfit) ShouldTriggerTakeProfit(currentPrice decimal
 	return false, nil
 }
 
+// ShouldTriggerStopLoss checks if the stop loss should be triggered
+func (ma *TimedMovingAverageStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
+	if !ma.Active {
+		return false, stoploss.ErrStatusInvalid
+	}
+
+	if currentPrice.LessThanOrEqual(ma.threshold) {
+		if ma.TriggerTime == 0 {
+			ma.TriggerTime = currentTime
+		}
+		if currentTime-ma.TriggerTime >= ma.TimeThreshold {
+			err := ma.Trigger(stoploss.TRIGGERED_REASON_TIMED_MA_STOPLOSS)
+			if err != nil {
+				return true, stoploss.ErrCallBackFail
+			}
+			return true, nil
+		}
+	} else {
+		ma.TriggerTime = 0
+	}
+	return false, nil
+}
+
+// ShouldTriggerTakeProfit checks if the take profit should be triggered
+func (ma *TimedMovingAverageProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
+	if !ma.Active {
+		return false, stoploss.ErrStatusInvalid
+	}
+	if currentPrice.GreaterThanOrEqual(ma.threshold) {
+		if ma.TriggerTime == 0 {
+			ma.TriggerTime = currentTime
+		}
+		if currentTime-ma.TriggerTime >= ma.TimeThreshold {
+			err := ma.Trigger(stoploss.TRIGGERED_REASON_TIMED_MA_TAKEPROFIT)
+			if err != nil {
+				return true, stoploss.ErrCallBackFail
+			}
+			return true, nil
+		}
+	} else {
+		ma.TriggerTime = 0
+	}
+	return false, nil
+}
+
+// GetTimeThreshold returns the time threshold for timed strategies
+func (ma *TimedMovingAverageStop) GetTimeThreshold() (int64, error) {
+	if !ma.Active {
+		return 0, stoploss.ErrStatusInvalid
+	}
+	return ma.TimeThreshold, nil
+}
+
+// GetTimeThreshold returns the time threshold for timed strategies
+func (ma *TimedMovingAverageProfit) GetTimeThreshold() (int64, error) {
+	if !ma.Active {
+		return 0, stoploss.ErrStatusInvalid
+	}
+	return ma.TimeThreshold, nil
+}
+
 // GetStopLoss returns the current stop loss threshold
 func (ma *FixedMovingAverageStop) GetStopLoss() (decimal.Decimal, error) {
 	if !ma.Active {
@@ -186,5 +341,30 @@ func (ma *FixedMovingAverageProfit) ReSetTakeProfiter(currentPrice decimal.Decim
 	ma.lastPrice = currentPrice
 	ma.threshold = ma.movingAverage.Mul(decimal.NewFromInt(1).Add(ma.offsetPercent))
 	ma.Active = true
+	return nil
+}
+
+// ReSetStopLosser resets the stop loss based on the current price
+func (ma *TimedMovingAverageStop) ReSetStopLosser(currentPrice decimal.Decimal) error {
+	if !ma.Active {
+		return stoploss.ErrStatusInvalid
+	}
+
+	ma.lastPrice = currentPrice
+	ma.threshold = ma.movingAverage.Mul(decimal.NewFromInt(1).Sub(ma.offsetPercent))
+	ma.Active = true
+	ma.TriggerTime = 0
+	return nil
+}
+
+// ReSetTakeProfiter resets the take profit based on the current price
+func (ma *TimedMovingAverageProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
+	if !ma.Active {
+		return stoploss.ErrStatusInvalid
+	}
+	ma.lastPrice = currentPrice
+	ma.threshold = ma.movingAverage.Mul(decimal.NewFromInt(1).Add(ma.offsetPercent))
+	ma.Active = true
+	ma.TriggerTime = 0
 	return nil
 }

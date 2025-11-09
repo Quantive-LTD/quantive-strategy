@@ -16,6 +16,8 @@ package example
 import (
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -24,8 +26,28 @@ import (
 	"github.com/wang900115/quant/stoploss/strategy"
 )
 
+var prices = make([]float64, 100)
+
+// generate simulated price data
+func init() {
+	(rand.New(rand.NewSource(time.Now().UnixNano())))
+	// Start price
+	startPrice := 100.0
+	// Slice for 100,000 prices
+	prices[0] = startPrice
+
+	for i := 1; i < len(prices); i++ {
+		// Small random change: -1.0 to +1.0
+		change := (rand.Float64()*2 - 1) // [-1,1)
+		prices[i] = prices[i-1] + change
+
+		// Optional: round to 2 decimal places
+		prices[i] = math.Round(prices[i]*100) / 100
+	}
+}
+
 // demonstrates usage with various strategies
-func StragetyUsage() {
+func StrategyUsage() {
 	fmt.Println("=== Strategy Usage Example ===")
 	// Create  configuration
 	config := engine.Config{
@@ -79,8 +101,6 @@ func StragetyUsage() {
 
 	// Simulate price movements
 	log.Println("\nSimulating price movements...")
-	prices := []float64{100.0, 102.0, 101.0, 99.0, 98.5, 70.0, 75.0, 80.0, 86.4, 94}
-
 	for i, price := range prices {
 		log.Printf("\n--- Price Update #%d: $%.2f ---\n", i+1, price)
 		currentPrice := decimal.NewFromFloat(price)
@@ -102,7 +122,7 @@ func StragetyUsage() {
 
 	// Let the system process for a bit more
 	log.Println("\nLetting system process for 2 more seconds...")
-	time.Sleep(30 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	// Stop the manager
 	log.Println("Stopping manager...")
