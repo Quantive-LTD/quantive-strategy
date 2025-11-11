@@ -178,30 +178,6 @@ func TestWebSocketConnection(t *testing.T) {
 	}
 }
 
-func TestStreamClientConnect(t *testing.T) {
-	testCases := []struct {
-		name     string
-		endpoint string
-	}{
-		{name: "SPOT Endpoint", endpoint: spotWsEndpoint},
-		{name: "FUTURES Endpoint", endpoint: futuresWsEndpoint},
-		{name: "INVERSE Endpoint", endpoint: inverseWsEndpoint},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			client := NewStreamClient()
-			err := client.connect(tc.endpoint)
-			if err != nil {
-				t.Fatalf("failed to connect to %s: %v", tc.endpoint, err)
-			}
-			defer client.Close()
-
-			t.Logf("Successfully connected to %s", tc.endpoint)
-		})
-	}
-}
-
 func TestWebSocketSubscribe(t *testing.T) {
 	pair := model.TradingPair{
 		Base:     currency.BTCSymbol,

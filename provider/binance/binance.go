@@ -121,7 +121,7 @@ func (bc *BinanceStreamClient) Subscribe(ctx context.Context, pair model.Trading
 }
 
 // Stream request (WebSocket API) read price updates
-func (bc *BinanceStreamClient) ReadPriceUpdate(ctx context.Context) error {
+func (bc *BinanceStreamClient) ReadLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():

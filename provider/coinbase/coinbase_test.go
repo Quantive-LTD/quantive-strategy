@@ -26,7 +26,7 @@ import (
 )
 
 func TestGetPrice(t *testing.T) {
-	cb := NewClient()
+	cb := New()
 	t.Run("SPOT", func(t *testing.T) {
 		pair := model.TradingPair{
 			Base:     currency.BTCSymbol,
@@ -42,8 +42,7 @@ func TestGetPrice(t *testing.T) {
 }
 
 func TestGetKlines(t *testing.T) {
-	cb := NewClient()
-
+	cb := New()
 	t.Run("SPOT", func(t *testing.T) {
 		pair := model.TradingPair{
 			Base:     currency.BTCSymbol,
@@ -62,7 +61,7 @@ func TestGetKlines(t *testing.T) {
 }
 
 func TestGetOrderBook(t *testing.T) {
-	cb := NewClient()
+	cb := New()
 	t.Run("SPOT", func(t *testing.T) {
 		pair := model.TradingPair{
 			Base:     currency.BTCSymbol,
@@ -75,4 +74,35 @@ func TestGetOrderBook(t *testing.T) {
 		}
 		t.Logf("Order Book: %+v", orderBook)
 	})
+}
+
+func TestWebSocketConnect(t *testing.T) {
+	bc := NewStreamClient()
+	err := bc.Connect()
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	defer bc.Close()
+
+	if bc.client == nil {
+		t.Fatal("expected client to be initialized, got nil")
+	}
+	t.Logf("Successfully connected to Spot WebSocket")
+}
+
+func TestWebSocketSubscribe(t *testing.T) {
+	bc := NewStreamClient()
+	err := bc.Connect()
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	defer bc.Close()
+	err = bc.Subscribe(context.Background(), model.TradingPair{
+		Base:     currency.BTCSymbol,
+		Quote:    currency.USDTSymbol,
+		Category: trade.SPOT,
+	}, []string{"ticker"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
 }
