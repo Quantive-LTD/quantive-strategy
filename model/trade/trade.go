@@ -26,6 +26,7 @@ type Category string
 const (
 	SPOT    Category = "SPOT"
 	FUTURES Category = "FUTURES"
+	INVERSE Category = "INVERSE"
 )
 
 type TradeInfo struct {
