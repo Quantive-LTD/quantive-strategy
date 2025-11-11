@@ -70,13 +70,6 @@ func New(config Config) *Engine {
 		execution: NewExecutionManager(config.BufferSize),
 		Reporter:  NewReport(),
 		Config:    config,
-
-		fss: false,
-		tss: false,
-		fts: false,
-		tts: false,
-		hfs: false,
-		hts: false,
 	}
 }
 
@@ -84,22 +77,16 @@ func (csm *Engine) RegisterStrategy(name string, strategy interface{}) error {
 	switch s := strategy.(type) {
 	case stoploss.FixedStopLoss:
 		csm.portfolio.RegistFixedStoplossStrategy(name, s)
-		csm.fss = true
 	case stoploss.TimeBasedStopLoss:
 		csm.portfolio.RegistTimedStoplossStrategy(name, s)
-		csm.tss = true
 	case stoploss.FixedTakeProfit:
 		csm.portfolio.RegistFixedTakeProfitStrategy(name, s)
-		csm.fts = true
 	case stoploss.TimeBasedTakeProfit:
 		csm.portfolio.RegistTimedTakeProfitStrategy(name, s)
-		csm.tts = true
 	case stoploss.HybridWithoutTime:
 		csm.portfolio.RegistHybridStrategy(name, s)
-		csm.hfs = true
 	case stoploss.HybridWithTime:
 		csm.portfolio.RegistHybridTimedStrategy(name, s)
-		csm.hts = true
 	default:
 		return errNonsupported
 	}
@@ -107,56 +94,38 @@ func (csm *Engine) RegisterStrategy(name string, strategy interface{}) error {
 }
 
 func (csm *Engine) Start() error {
-	count := 0
 
-	if csm.fss {
-		count++
-	}
-	if csm.tss {
-		count++
-	}
-	if csm.fts {
-		count++
-	}
-	if csm.tts {
-		count++
-	}
-	if csm.hfs {
-		count++
-	}
-	if csm.hts {
-		count++
-	}
-
-	if count == 0 {
+	if csm.portfolio.count == 0 {
 		return errNoStrategies
 	}
 
-	csm.wg.Add(count)
-	if csm.fss {
+	csm.wg.Add(csm.portfolio.count)
+	if len(csm.portfolio.fixedStoplossStrategies) > 0 {
 		go csm.handleFixedStopLoss()
 	}
-	if csm.tss {
+	if len(csm.portfolio.timedStoplossStrategies) > 0 {
 		go csm.handleTimedStopLoss()
 	}
-	if csm.fts {
+	if len(csm.portfolio.fixedTakeProfitStrategies) > 0 {
 		go csm.handleFixedProfit()
 	}
-	if csm.tts {
+	if len(csm.portfolio.timedTakeProfitStrategies) > 0 {
 		go csm.handleTimedProfit()
 	}
-	if csm.hfs {
+	if len(csm.portfolio.hybridFixedStrategies) > 0 {
 		go csm.handleFixedHybrid()
 	}
-	if csm.hts {
+	if len(csm.portfolio.hybridTimedStrategies) > 0 {
 		go csm.handleTimedHybrid()
 	}
 	generalResult, hybridResult := csm.execution.getResult()
-	if csm.fss || csm.tss || csm.fts || csm.tts {
+	if csm.portfolio.openGeneral {
+		csm.wg.Add(1)
 		go csm.Reporter.ProcessGeneralResult(generalResult)
 	}
 
-	if csm.hfs || csm.hts {
+	if csm.portfolio.openHybrid {
+		csm.wg.Add(1)
 		go csm.Reporter.ProcessHybridResult(hybridResult)
 	}
 
