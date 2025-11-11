@@ -29,6 +29,9 @@ type Portfolio struct {
 	timedTakeProfitStrategies map[string]stoploss.TimeBasedTakeProfit
 	hybridFixedStrategies     map[string]stoploss.HybridWithoutTime
 	hybridTimedStrategies     map[string]stoploss.HybridWithTime
+	openGeneral               bool
+	openHybrid                bool
+	count                     int
 }
 
 func NewPortfolio() *Portfolio {
@@ -39,6 +42,9 @@ func NewPortfolio() *Portfolio {
 		timedTakeProfitStrategies: make(map[string]stoploss.TimeBasedTakeProfit),
 		hybridFixedStrategies:     make(map[string]stoploss.HybridWithoutTime),
 		hybridTimedStrategies:     make(map[string]stoploss.HybridWithTime),
+		openGeneral:               false,
+		openHybrid:                false,
+		count:                     0,
 	}
 }
 
@@ -47,6 +53,8 @@ func (p *Portfolio) RegistFixedStoplossStrategy(name string, strategy stoploss.F
 	defer p.mutex.Unlock()
 
 	p.fixedStoplossStrategies[name] = strategy
+	p.openGeneral = true
+	p.count++
 }
 
 func (p *Portfolio) RegistTimedStoplossStrategy(name string, strategy stoploss.TimeBasedStopLoss) {
@@ -54,6 +62,8 @@ func (p *Portfolio) RegistTimedStoplossStrategy(name string, strategy stoploss.T
 	defer p.mutex.Unlock()
 
 	p.timedStoplossStrategies[name] = strategy
+	p.openGeneral = true
+	p.count++
 }
 
 func (p *Portfolio) RegistFixedTakeProfitStrategy(name string, strategy stoploss.FixedTakeProfit) {
@@ -61,6 +71,8 @@ func (p *Portfolio) RegistFixedTakeProfitStrategy(name string, strategy stoploss
 	defer p.mutex.Unlock()
 
 	p.fixedTakeProfitStrategies[name] = strategy
+	p.openGeneral = true
+	p.count++
 }
 
 func (p *Portfolio) RegistTimedTakeProfitStrategy(name string, strategy stoploss.TimeBasedTakeProfit) {
@@ -68,6 +80,8 @@ func (p *Portfolio) RegistTimedTakeProfitStrategy(name string, strategy stoploss
 	defer p.mutex.Unlock()
 
 	p.timedTakeProfitStrategies[name] = strategy
+	p.openGeneral = true
+	p.count++
 }
 
 func (p *Portfolio) RegistHybridStrategy(name string, strategy stoploss.HybridWithoutTime) {
@@ -75,12 +89,16 @@ func (p *Portfolio) RegistHybridStrategy(name string, strategy stoploss.HybridWi
 	defer p.mutex.Unlock()
 
 	p.hybridFixedStrategies[name] = strategy
+	p.openHybrid = true
+	p.count++
 }
 
 func (p *Portfolio) RegistHybridTimedStrategy(name string, strategy stoploss.HybridWithTime) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	p.hybridTimedStrategies[name] = strategy
+	p.openHybrid = true
+	p.count++
 }
 
 func (p *Portfolio) GetFixedStoplossStrategies() map[string]stoploss.FixedStopLoss {

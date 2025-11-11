@@ -24,7 +24,6 @@ import (
 	"github.com/wang900115/quant/model/currency"
 	"github.com/wang900115/quant/model/trade"
 	"github.com/wang900115/quant/provider/binance"
-	"github.com/wang900115/quant/provider/bybit"
 	"github.com/wang900115/quant/provider/coinbase"
 	"github.com/wang900115/quant/provider/okx"
 )
@@ -32,10 +31,9 @@ import (
 func TestProvider(t *testing.T) {
 	// This is a placeholder test to ensure the provider package builds correctly.
 	ps := New()
-	ps.Register(model.BINANCE, binance.NewClient())
-	ps.Register(model.COINBASE, coinbase.NewClient())
-	ps.Register(model.BYBIT, bybit.NewClient())
-	ps.Register(model.OKX, okx.NewClient())
+	ps.Register(model.BINANCE, binance.New())
+	ps.Register(model.COINBASE, coinbase.New())
+	ps.Register(model.OKX, okx.New())
 
 	pair := model.TradingPair{
 		ExchangeID: model.BINANCE,
@@ -88,10 +86,9 @@ func TestProvider(t *testing.T) {
 
 func TestGetKlines(t *testing.T) {
 	ps := New()
-	ps.Register(model.BINANCE, binance.NewClient())
-	ps.Register(model.COINBASE, coinbase.NewClient())
-	ps.Register(model.OKX, okx.NewClient())
-	ps.Register(model.BYBIT, bybit.NewClient())
+	ps.Register(model.BINANCE, binance.New())
+	ps.Register(model.COINBASE, coinbase.New())
+	ps.Register(model.OKX, okx.New())
 
 	t.Run("SPOT", func(t *testing.T) {
 
@@ -192,11 +189,9 @@ func TestGetKlines(t *testing.T) {
 
 func TestOrderBook(t *testing.T) {
 	ps := New()
-	ps.Register(model.COINBASE, coinbase.NewClient())
-	ps.Register(model.BINANCE, binance.NewClient())
-	ps.Register(model.OKX, okx.NewClient())
-	ps.Register(model.BYBIT, bybit.NewClient())
-
+	ps.Register(model.COINBASE, coinbase.New())
+	ps.Register(model.BINANCE, binance.New())
+	ps.Register(model.OKX, okx.New())
 	t.Run("SPOT", func(t *testing.T) {
 		pair := model.TradingPair{
 			ExchangeID: model.BINANCE,

@@ -21,14 +21,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/shopspring/decimal"
 	"github.com/wang900115/quant/common/parse"
 	"github.com/wang900115/quant/model"
 )
 
 const (
-	END_POINT = "https://api.exchange.coinbase.com"
-	TIMEOUT   = 10 * time.Second
+	spotEndpoint   = "https://api.exchange.coinbase.com"
+	spotWsEndpoint = "wss://ws-feed.exchange.coinbase.com"
+	defaultTimeout = 10 * time.Second
 )
 
 var (
@@ -37,26 +39,93 @@ var (
 	errNotValidType   = errors.New("coinbase: not valid type")
 )
 
-type CoinbaseClient struct {
-	endpoint   string
-	httpClient *http.Client
+type CoinbaseSingleClient struct {
+	client *http.Client
 }
 
-func NewClient() *CoinbaseClient {
-	return &CoinbaseClient{
-		endpoint:   END_POINT,
-		httpClient: &http.Client{Timeout: TIMEOUT},
+func NewSingleClient() *CoinbaseSingleClient {
+	return &CoinbaseSingleClient{
+		client: &http.Client{Timeout: defaultTimeout},
 	}
 }
 
-func (cc *CoinbaseClient) GetPrice(ctx context.Context, pair model.TradingPair) (*model.PricePoint, error) {
+type CoinbaseStreamClient struct {
+	client  *websocket.Conn
+	handler func(message []byte) error
+}
+
+type CoinbaseClient struct {
+	*CoinbaseSingleClient
+	*CoinbaseStreamClient
+}
+
+func New() *CoinbaseClient {
+	return &CoinbaseClient{
+		CoinbaseSingleClient: NewSingleClient(),
+		CoinbaseStreamClient: NewStreamClient(),
+	}
+}
+
+func NewStreamClient() *CoinbaseStreamClient {
+	return &CoinbaseStreamClient{}
+}
+
+func (cc *CoinbaseStreamClient) Connect() error {
+	var dialer websocket.Dialer
+	conn, _, err := dialer.Dial(spotWsEndpoint, nil)
+	if err != nil {
+		return err
+	}
+	cc.client = conn
+	return nil
+}
+
+func (cc *CoinbaseStreamClient) SetHandler(handler func(message []byte) error) {
+	cc.handler = handler
+}
+
+func (cc *CoinbaseStreamClient) Close() error {
+	if cc.client != nil {
+		return cc.client.Close()
+	}
+	return nil
+}
+
+func (cc *CoinbaseStreamClient) Subscribe(ctx context.Context, pair model.TradingPair, channelsType []string) error {
 	symbol := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
-	url := fmt.Sprintf("%s/products/%s/ticker", cc.endpoint, symbol)
+	subscribeMsg := map[string]interface{}{
+		"type":        "subscribe",
+		"product_ids": []string{symbol},
+		"channels":    channelsType,
+	}
+	return cc.client.WriteJSON(subscribeMsg)
+}
+
+func (cc *CoinbaseStreamClient) ReadLoop(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return cc.client.Close()
+		default:
+			_, message, err := cc.client.ReadMessage()
+			if err != nil {
+				return err
+			}
+			if err := cc.handler(message); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func (cc *CoinbaseSingleClient) GetPrice(ctx context.Context, pair model.TradingPair) (*model.PricePoint, error) {
+	symbol := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
+	url := fmt.Sprintf("%s/products/%s/ticker", spotEndpoint, symbol)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := cc.httpClient.Do(req)
+	resp, err := cc.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -84,8 +153,7 @@ func (cc *CoinbaseClient) GetPrice(ctx context.Context, pair model.TradingPair) 
 	return data, nil
 }
 
-// care: 60, 300, 900, 3600, 21600, 86400
-func (cc *CoinbaseClient) GetKlines(ctx context.Context, pair model.TradingPair, granularity string, limit int) ([]model.PriceInterval, error) {
+func (cc *CoinbaseSingleClient) GetKlines(ctx context.Context, pair model.TradingPair, granularity string, limit int) ([]model.PriceInterval, error) {
 	symbol := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
 
 	granularityInt := int(parse.ParseInterval(granularity).Seconds())
@@ -96,7 +164,7 @@ func (cc *CoinbaseClient) GetKlines(ctx context.Context, pair model.TradingPair,
 	startTime := endTime.Add(-time.Duration(int64(limit)*int64(granularityInt)) * time.Second)
 
 	url := fmt.Sprintf("%s/products/%s/candles?granularity=%d&start=%s&end=%s",
-		cc.endpoint, symbol, granularityInt,
+		spotEndpoint, symbol, granularityInt,
 		startTime.Format(time.RFC3339),
 		endTime.Format(time.RFC3339))
 
@@ -105,7 +173,7 @@ func (cc *CoinbaseClient) GetKlines(ctx context.Context, pair model.TradingPair,
 		return nil, err
 	}
 
-	resp, err := cc.httpClient.Do(req)
+	resp, err := cc.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -177,15 +245,15 @@ func (cc *CoinbaseClient) GetKlines(ctx context.Context, pair model.TradingPair,
 	return intervals, nil
 }
 
-func (cc *CoinbaseClient) GetOrderBook(ctx context.Context, pair model.TradingPair, limit int) (*model.OrderBook, error) {
+func (cc *CoinbaseSingleClient) GetOrderBook(ctx context.Context, pair model.TradingPair, limit int) (*model.OrderBook, error) {
 	symbol := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
-	url := fmt.Sprintf("%s/products/%s/book?level=2", cc.endpoint, symbol)
+	url := fmt.Sprintf("%s/products/%s/book?level=2", spotEndpoint, symbol)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := cc.httpClient.Do(req)
+	resp, err := cc.client.Do(req)
 	if err != nil {
 		return nil, err
 	}

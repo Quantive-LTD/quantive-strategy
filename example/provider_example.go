@@ -22,17 +22,15 @@ import (
 	"github.com/wang900115/quant/model/trade"
 	"github.com/wang900115/quant/provider"
 	"github.com/wang900115/quant/provider/binance"
-	"github.com/wang900115/quant/provider/bybit"
 	"github.com/wang900115/quant/provider/coinbase"
 	"github.com/wang900115/quant/provider/okx"
 )
 
 func ProviderExample() {
 	ps := provider.New()
-	ps.Register(model.BINANCE, binance.NewClient())
-	ps.Register(model.BYBIT, bybit.NewClient())
-	ps.Register(model.COINBASE, coinbase.NewClient())
-	ps.Register(model.OKX, okx.NewClient())
+	ps.Register(model.BINANCE, binance.New())
+	ps.Register(model.COINBASE, coinbase.New())
+	ps.Register(model.OKX, okx.New())
 
 	log.Printf("Providers registered: %+v \n", ps.ListProviders())
 
