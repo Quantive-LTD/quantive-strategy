@@ -22,7 +22,6 @@ import (
 	"github.com/wang900115/quant/model/trade"
 	"github.com/wang900115/quant/provider"
 	"github.com/wang900115/quant/provider/binance"
-	"github.com/wang900115/quant/provider/bybit"
 	"github.com/wang900115/quant/provider/coinbase"
 	"github.com/wang900115/quant/provider/okx"
 )
@@ -30,7 +29,6 @@ import (
 func ProviderExample() {
 	ps := provider.New()
 	ps.Register(model.BINANCE, binance.New())
-	ps.Register(model.BYBIT, bybit.NewClient())
 	ps.Register(model.COINBASE, coinbase.New())
 	ps.Register(model.OKX, okx.NewClient())
 

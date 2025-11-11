@@ -206,9 +206,7 @@ func TestWebSocketSubscribe(t *testing.T) {
 			}
 			defer client.Close()
 
-			// Subscribe using the client's method
-			ctx := context.Background()
-			if err := client.Subscribe(ctx, pair, tc.streamType); err != nil {
+			if err := client.Subscribe(pair, tc.streamType); err != nil {
 				t.Fatalf("failed to subscribe to %s: %v", tc.streamType, err)
 			}
 

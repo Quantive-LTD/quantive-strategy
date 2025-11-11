@@ -111,7 +111,7 @@ func (bc *BinanceStreamClient) Close() error {
 	"aggTrade": Aggregate trade updates
 	"trade": Trade updates
 */
-func (bc *BinanceStreamClient) Subscribe(ctx context.Context, pair model.TradingPair, streamType string) error {
+func (bc *BinanceStreamClient) Subscribe(pair model.TradingPair, streamType string) error {
 	msg := map[string]interface{}{
 		"method": "SUBSCRIBE",
 		"params": []string{fmt.Sprintf("%s@%s", fmt.Sprintf("%s%s", pair.Base, pair.Quote), streamType)},

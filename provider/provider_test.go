@@ -24,7 +24,6 @@ import (
 	"github.com/wang900115/quant/model/currency"
 	"github.com/wang900115/quant/model/trade"
 	"github.com/wang900115/quant/provider/binance"
-	"github.com/wang900115/quant/provider/bybit"
 	"github.com/wang900115/quant/provider/coinbase"
 	"github.com/wang900115/quant/provider/okx"
 )
@@ -34,7 +33,6 @@ func TestProvider(t *testing.T) {
 	ps := New()
 	ps.Register(model.BINANCE, binance.New())
 	ps.Register(model.COINBASE, coinbase.New())
-	ps.Register(model.BYBIT, bybit.NewClient())
 	ps.Register(model.OKX, okx.NewClient())
 
 	pair := model.TradingPair{
@@ -91,7 +89,6 @@ func TestGetKlines(t *testing.T) {
 	ps.Register(model.BINANCE, binance.New())
 	ps.Register(model.COINBASE, coinbase.New())
 	ps.Register(model.OKX, okx.NewClient())
-	ps.Register(model.BYBIT, bybit.NewClient())
 
 	t.Run("SPOT", func(t *testing.T) {
 
@@ -195,8 +192,6 @@ func TestOrderBook(t *testing.T) {
 	ps.Register(model.COINBASE, coinbase.New())
 	ps.Register(model.BINANCE, binance.New())
 	ps.Register(model.OKX, okx.NewClient())
-	ps.Register(model.BYBIT, bybit.NewClient())
-
 	t.Run("SPOT", func(t *testing.T) {
 		pair := model.TradingPair{
 			ExchangeID: model.BINANCE,
