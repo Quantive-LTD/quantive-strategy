@@ -26,7 +26,7 @@ import (
 )
 
 func TestGetPrice(t *testing.T) {
-	o := NewClient()
+	o := New()
 	t.Run("SPOT", func(t *testing.T) {
 		pair := model.TradingPair{
 			Base:     currency.BTCSymbol,
@@ -54,7 +54,7 @@ func TestGetPrice(t *testing.T) {
 }
 
 func TestGetKlines(t *testing.T) {
-	o := NewClient()
+	o := New()
 
 	t.Run("SPOT", func(t *testing.T) {
 		pair := model.TradingPair{
@@ -88,7 +88,7 @@ func TestGetKlines(t *testing.T) {
 }
 
 func TestGetOrderBook(t *testing.T) {
-	o := NewClient()
+	o := New()
 	t.Run("SPOT", func(t *testing.T) {
 		pair := model.TradingPair{
 			Base:     currency.BTCSymbol,

@@ -33,7 +33,7 @@ func TestProvider(t *testing.T) {
 	ps := New()
 	ps.Register(model.BINANCE, binance.New())
 	ps.Register(model.COINBASE, coinbase.New())
-	ps.Register(model.OKX, okx.NewClient())
+	ps.Register(model.OKX, okx.New())
 
 	pair := model.TradingPair{
 		ExchangeID: model.BINANCE,
@@ -88,7 +88,7 @@ func TestGetKlines(t *testing.T) {
 	ps := New()
 	ps.Register(model.BINANCE, binance.New())
 	ps.Register(model.COINBASE, coinbase.New())
-	ps.Register(model.OKX, okx.NewClient())
+	ps.Register(model.OKX, okx.New())
 
 	t.Run("SPOT", func(t *testing.T) {
 
@@ -191,7 +191,7 @@ func TestOrderBook(t *testing.T) {
 	ps := New()
 	ps.Register(model.COINBASE, coinbase.New())
 	ps.Register(model.BINANCE, binance.New())
-	ps.Register(model.OKX, okx.NewClient())
+	ps.Register(model.OKX, okx.New())
 	t.Run("SPOT", func(t *testing.T) {
 		pair := model.TradingPair{
 			ExchangeID: model.BINANCE,

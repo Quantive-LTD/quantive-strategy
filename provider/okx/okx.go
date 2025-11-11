@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/shopspring/decimal"
 	"github.com/wang900115/quant/common/parse"
 	"github.com/wang900115/quant/model"
@@ -29,8 +30,9 @@ import (
 )
 
 const (
-	END_POINT = "https://www.okx.com"
-	TIMEOUT   = 10 * time.Second
+	endPoint       = "https://www.okx.com"
+	wsEndPoint     = "wss://ws.okx.com:8443/ws/v5/public"
+	defaultTimeout = 10 * time.Second
 )
 
 var (
@@ -38,19 +40,87 @@ var (
 	errResponseFailed = errors.New("okx: response failed")
 )
 
-type OkxClient struct {
-	endpoint   string
+type OkxSingleClient struct {
 	httpClient *http.Client
 }
 
-func NewClient() *OkxClient {
-	return &OkxClient{
-		endpoint:   END_POINT,
-		httpClient: &http.Client{Timeout: TIMEOUT},
+func NewSingleClient() *OkxSingleClient {
+	return &OkxSingleClient{
+		httpClient: &http.Client{Timeout: defaultTimeout},
 	}
 }
 
-func (oc *OkxClient) getInstId(pair model.TradingPair) string {
+type OkxStreamClient struct {
+	client  *websocket.Conn
+	handler func(message []byte) error
+}
+
+func NewStreamClient() *OkxStreamClient {
+	return &OkxStreamClient{}
+}
+
+type OkxClient struct {
+	OkxSingleClient
+	OkxStreamClient
+}
+
+func New() *OkxClient {
+	return &OkxClient{
+		OkxSingleClient: *NewSingleClient(),
+		OkxStreamClient: *NewStreamClient(),
+	}
+}
+
+func (oc *OkxStreamClient) Connect() error {
+	c, _, err := websocket.DefaultDialer.Dial(wsEndPoint, nil)
+	if err != nil {
+		return err
+	}
+	oc.client = c
+	return nil
+}
+
+func (oc *OkxStreamClient) Close() error {
+	if oc.client != nil {
+		return oc.client.Close()
+	}
+	return nil
+}
+
+func (oc *OkxStreamClient) Subscribe(pair model.TradingPair, channel string) error {
+	instId := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
+	msg := map[string]interface{}{
+		"op": "subscribe",
+		"args": []map[string]interface{}{
+			{
+				"channel": channel,
+				"instId":  instId,
+			},
+		},
+	}
+	return oc.client.WriteJSON(msg)
+}
+
+func (oc *OkxStreamClient) ReadLoop(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return oc.client.Close()
+		default:
+			_, message, err := oc.client.ReadMessage()
+			if err != nil {
+				return err
+			}
+			if oc.handler != nil {
+				if err := oc.handler(message); err != nil {
+					return err
+				}
+			}
+		}
+	}
+}
+
+func (oc *OkxSingleClient) getInstId(pair model.TradingPair) string {
 	base := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
 	switch pair.Category {
 	case trade.SPOT:
@@ -62,9 +132,9 @@ func (oc *OkxClient) getInstId(pair model.TradingPair) string {
 	}
 }
 
-func (oc *OkxClient) GetPrice(ctx context.Context, pair model.TradingPair) (*model.PricePoint, error) {
+func (oc *OkxSingleClient) GetPrice(ctx context.Context, pair model.TradingPair) (*model.PricePoint, error) {
 	instId := oc.getInstId(pair)
-	url := fmt.Sprintf("%s/api/v5/market/ticker?instId=%s", oc.endpoint, instId)
+	url := fmt.Sprintf("%s/api/v5/market/ticker?instId=%s", endPoint, instId)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -101,10 +171,10 @@ func (oc *OkxClient) GetPrice(ctx context.Context, pair model.TradingPair) (*mod
 }
 
 // interval: 1m, 3m, 5m, 15m, 30m, 1H, 2H, 4H, 6H, 12H, 1D, 1W, 1M, 3M
-func (oc *OkxClient) GetKlines(ctx context.Context, pair model.TradingPair, interval string, limit int) ([]model.PriceInterval, error) {
+func (oc *OkxSingleClient) GetKlines(ctx context.Context, pair model.TradingPair, interval string, limit int) ([]model.PriceInterval, error) {
 	instId := oc.getInstId(pair)
 	url := fmt.Sprintf("%s/api/v5/market/candles?instId=%s&bar=%s&limit=%d",
-		oc.endpoint, instId, interval, limit)
+		endPoint, instId, interval, limit)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -188,9 +258,9 @@ func (oc *OkxClient) GetKlines(ctx context.Context, pair model.TradingPair, inte
 	return intervals, nil
 }
 
-func (oc *OkxClient) GetOrderBook(ctx context.Context, pair model.TradingPair, limit int) (*model.OrderBook, error) {
+func (oc *OkxSingleClient) GetOrderBook(ctx context.Context, pair model.TradingPair, limit int) (*model.OrderBook, error) {
 	instId := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
-	url := fmt.Sprintf("%s/api/v5/market/books?instId=%s&sz=%d", oc.endpoint, instId, limit)
+	url := fmt.Sprintf("%s/api/v5/market/books?instId=%s&sz=%d", endPoint, instId, limit)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
