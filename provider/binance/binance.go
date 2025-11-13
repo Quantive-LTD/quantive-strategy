@@ -283,4 +283,3 @@ func decideOrderBookRoute(pair model.TradingPair, limit int) (string, error) {
 		return "", errInvalidPair
 	}
 }
-
