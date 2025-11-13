@@ -18,103 +18,50 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/shopspring/decimal"
 	"github.com/wang900115/quant/common/parse"
 	"github.com/wang900115/quant/model"
 )
 
 const (
-	spotEndpoint   = "https://api.exchange.coinbase.com"
-	spotWsEndpoint = "wss://ws-feed.exchange.coinbase.com"
-	defaultTimeout = 10 * time.Second
+	spotEndpoint       = "https://api.exchange.coinbase.com"
+	spotWsEndpoint     = "wss://ws-feed.exchange.coinbase.com"
+	testSpotEndpoint   = "https://api-public.sandbox.exchange.coinbase.com"
+	testSpotWsEndpoint = "wss://ws-feed-public.sandbox.exchange.coinbase.com"
+)
+
+var defaultCallback = func(message []byte) error {
+	log.Println(string(message))
+	return nil
+}
+
+const (
+	defaultTimeout    = 10 * time.Second
+	defaultBufferSize = 100
 )
 
 var (
 	errCoinbaseNoData = errors.New("coinbase: no data returned")
 	errResponseFailed = errors.New("coinbase: response failed")
 	errNotValidType   = errors.New("coinbase: not valid type")
+	errInitFailed     = errors.New("coinbase: initialization failed")
 )
 
 type CoinbaseSingleClient struct {
 	client *http.Client
 }
 
-func NewSingleClient() *CoinbaseSingleClient {
+func NewSingleClient(cfg CoinbaseConfig) *CoinbaseSingleClient {
+	timeout := cfg.Timeout
+	if timeout == 0 {
+		timeout = defaultTimeout
+	}
 	return &CoinbaseSingleClient{
-		client: &http.Client{Timeout: defaultTimeout},
-	}
-}
-
-type CoinbaseStreamClient struct {
-	client  *websocket.Conn
-	handler func(message []byte) error
-}
-
-type CoinbaseClient struct {
-	*CoinbaseSingleClient
-	*CoinbaseStreamClient
-}
-
-func New() *CoinbaseClient {
-	return &CoinbaseClient{
-		CoinbaseSingleClient: NewSingleClient(),
-		CoinbaseStreamClient: NewStreamClient(),
-	}
-}
-
-func NewStreamClient() *CoinbaseStreamClient {
-	return &CoinbaseStreamClient{}
-}
-
-func (cc *CoinbaseStreamClient) Connect() error {
-	var dialer websocket.Dialer
-	conn, _, err := dialer.Dial(spotWsEndpoint, nil)
-	if err != nil {
-		return err
-	}
-	cc.client = conn
-	return nil
-}
-
-func (cc *CoinbaseStreamClient) SetHandler(handler func(message []byte) error) {
-	cc.handler = handler
-}
-
-func (cc *CoinbaseStreamClient) Close() error {
-	if cc.client != nil {
-		return cc.client.Close()
-	}
-	return nil
-}
-
-func (cc *CoinbaseStreamClient) Subscribe(ctx context.Context, pair model.TradingPair, channelsType []string) error {
-	symbol := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
-	subscribeMsg := map[string]interface{}{
-		"type":        "subscribe",
-		"product_ids": []string{symbol},
-		"channels":    channelsType,
-	}
-	return cc.client.WriteJSON(subscribeMsg)
-}
-
-func (cc *CoinbaseStreamClient) ReadLoop(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return cc.client.Close()
-		default:
-			_, message, err := cc.client.ReadMessage()
-			if err != nil {
-				return err
-			}
-			if err := cc.handler(message); err != nil {
-				return err
-			}
-		}
+		client: &http.Client{Timeout: timeout},
 	}
 }
 
@@ -288,19 +235,37 @@ func (cc *CoinbaseSingleClient) GetOrderBook(ctx context.Context, pair model.Tra
 	}, nil
 }
 
-func parseDecimalFromInterface(v interface{}) (decimal.Decimal, error) {
-	switch val := v.(type) {
-	case string:
-		return decimal.NewFromString(val)
-	case float64:
-		return decimal.NewFromFloat(val), nil
-	case int:
-		return decimal.NewFromInt(int64(val)), nil
-	case int64:
-		return decimal.NewFromInt(val), nil
-	default:
-		return decimal.Zero, errNotValidType
+type CoinbaseConfig struct {
+	IstestNet  bool
+	Timeout    time.Duration
+	BufferSize int
+	Callback   func(message []byte) error
+}
+
+type CoinbaseClient struct {
+	*CoinbaseSingleClient
+	*CoinbaseStreamClient
+}
+
+func New(config CoinbaseConfig) *CoinbaseClient {
+	streamClient, err := NewStreamClient(config)
+	if err != nil {
+		panic(err)
 	}
+	return &CoinbaseClient{
+		CoinbaseSingleClient: NewSingleClient(config),
+		CoinbaseStreamClient: streamClient,
+	}
+}
+
+func getMessageType(msg []byte) string {
+	var raw struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(msg, &raw); err != nil {
+		return ""
+	}
+	return raw.Type
 }
 
 func validInterval(granularity int) bool {

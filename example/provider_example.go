@@ -28,9 +28,9 @@ import (
 
 func ProviderExample() {
 	ps := provider.New()
-	ps.Register(model.BINANCE, binance.New())
-	ps.Register(model.COINBASE, coinbase.New())
-	ps.Register(model.OKX, okx.New())
+	ps.Register(model.BINANCE, binance.New(binance.BinanceConfig{}))
+	ps.Register(model.COINBASE, coinbase.New(coinbase.CoinbaseConfig{}))
+	ps.Register(model.OKX, okx.New(okx.OkxConfig{}))
 
 	log.Printf("Providers registered: %+v \n", ps.ListProviders())
 

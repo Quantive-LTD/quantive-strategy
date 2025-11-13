@@ -23,9 +23,8 @@ import (
 	"github.com/wang900115/quant/model/trade"
 )
 
-type PriceTick struct {
-	TradingPair
-	PriceInterval
+type PriceTick interface {
+	PricePoint | PriceInterval | OrderBook
 }
 
 type TradingPair struct {
@@ -128,4 +127,12 @@ func ParseOrderEntries[T OrderBookEntry](entries [][]interface{}) ([]T, error) {
 		result = append(result, T(entry))
 	}
 	return result, nil
+}
+
+func PushToChan[T PriceTick](ch chan T, data T) {
+	select {
+	case ch <- data:
+	default:
+		// drop if channel is full
+	}
 }

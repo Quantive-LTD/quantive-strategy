@@ -35,6 +35,10 @@ const (
 	ETHName  CurrencyName = "Ethereum"
 )
 
+func (cn CurrencyName) String() string {
+	return string(cn)
+}
+
 type CurrencySymbol string
 
 const (
@@ -45,6 +49,10 @@ const (
 	BTCSymbol  CurrencySymbol = "BTC"
 	ETHSymbol  CurrencySymbol = "ETH"
 )
+
+func (cs CurrencySymbol) String() string {
+	return string(cs)
+}
 
 type Currency struct {
 	ID       CurrencyId
