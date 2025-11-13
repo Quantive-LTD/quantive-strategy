@@ -29,6 +29,9 @@ type Provider interface {
 	GetPrice(ctx context.Context, pair model.TradingPair) (*model.PricePoint, error)
 	GetKlines(ctx context.Context, pair model.TradingPair, interval string, limit int) ([]model.PriceInterval, error)
 	GetOrderBook(ctx context.Context, pair model.TradingPair, limit int) (*model.OrderBook, error)
+	SubscribeStream(pair model.TradingPair, channel []string) error
+	ReceiveStream() (<-chan model.PricePoint, <-chan model.PriceInterval, <-chan model.OrderBook)
+	Close() error
 }
 
 type Providers struct {

@@ -18,11 +18,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/shopspring/decimal"
 	"github.com/wang900115/quant/common/parse"
 	"github.com/wang900115/quant/model"
@@ -30,110 +30,47 @@ import (
 )
 
 const (
-	endPoint       = "https://www.okx.com"
-	wsEndPoint     = "wss://ws.okx.com:8443/ws/v5/public"
-	defaultTimeout = 10 * time.Second
+	endPoint          = "https://www.okx.com"
+	wsEndPointPublic  = "wss://ws.okx.com:8443/ws/v5/public"
+	wsEndPointPrivate = "wss://ws.okx.com:8443/ws/v5/private"
+
+	wsTestEndPointPublic  = "wss://wspap.okx.com:8443/ws/v5/public?brokerId=9999"
+	wsTestEndPointPrivate = "wss://wspap.okx.com:8443/ws/v5/private?brokerId=9999"
+)
+
+var defaultCallback = func(message []byte) error {
+	log.Println(string(message))
+	return nil
+}
+
+const (
+	defaultTimeout    = 10 * time.Second
+	defaultBufferSize = 100
 )
 
 var (
 	errOkxNoData      = errors.New("okx: no data returned")
 	errResponseFailed = errors.New("okx: response failed")
+	errNotValidType   = errors.New("okx: not valid type")
+	errInitFailed     = errors.New("okx: initialization failed")
 )
 
 type OkxSingleClient struct {
 	httpClient *http.Client
 }
 
-func NewSingleClient() *OkxSingleClient {
+func NewSingleClient(cfg OkxConfig) *OkxSingleClient {
+	timeout := cfg.Timeout
+	if timeout == 0 {
+		timeout = defaultTimeout
+	}
 	return &OkxSingleClient{
-		httpClient: &http.Client{Timeout: defaultTimeout},
-	}
-}
-
-type OkxStreamClient struct {
-	client  *websocket.Conn
-	handler func(message []byte) error
-}
-
-func NewStreamClient() *OkxStreamClient {
-	return &OkxStreamClient{}
-}
-
-type OkxClient struct {
-	OkxSingleClient
-	OkxStreamClient
-}
-
-func New() *OkxClient {
-	return &OkxClient{
-		OkxSingleClient: *NewSingleClient(),
-		OkxStreamClient: *NewStreamClient(),
-	}
-}
-
-func (oc *OkxStreamClient) Connect() error {
-	c, _, err := websocket.DefaultDialer.Dial(wsEndPoint, nil)
-	if err != nil {
-		return err
-	}
-	oc.client = c
-	return nil
-}
-
-func (oc *OkxStreamClient) Close() error {
-	if oc.client != nil {
-		return oc.client.Close()
-	}
-	return nil
-}
-
-func (oc *OkxStreamClient) Subscribe(pair model.TradingPair, channel string) error {
-	instId := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
-	msg := map[string]interface{}{
-		"op": "subscribe",
-		"args": []map[string]interface{}{
-			{
-				"channel": channel,
-				"instId":  instId,
-			},
-		},
-	}
-	return oc.client.WriteJSON(msg)
-}
-
-func (oc *OkxStreamClient) ReadLoop(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return oc.client.Close()
-		default:
-			_, message, err := oc.client.ReadMessage()
-			if err != nil {
-				return err
-			}
-			if oc.handler != nil {
-				if err := oc.handler(message); err != nil {
-					return err
-				}
-			}
-		}
-	}
-}
-
-func (oc *OkxSingleClient) getInstId(pair model.TradingPair) string {
-	base := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
-	switch pair.Category {
-	case trade.SPOT:
-		return base
-	case trade.FUTURES:
-		return base + "-SWAP"
-	default:
-		return base
+		httpClient: &http.Client{Timeout: timeout},
 	}
 }
 
 func (oc *OkxSingleClient) GetPrice(ctx context.Context, pair model.TradingPair) (*model.PricePoint, error) {
-	instId := oc.getInstId(pair)
+	instId := getInstId(pair)
 	url := fmt.Sprintf("%s/api/v5/market/ticker?instId=%s", endPoint, instId)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -172,7 +109,7 @@ func (oc *OkxSingleClient) GetPrice(ctx context.Context, pair model.TradingPair)
 
 // interval: 1m, 3m, 5m, 15m, 30m, 1H, 2H, 4H, 6H, 12H, 1D, 1W, 1M, 3M
 func (oc *OkxSingleClient) GetKlines(ctx context.Context, pair model.TradingPair, interval string, limit int) ([]model.PriceInterval, error) {
-	instId := oc.getInstId(pair)
+	instId := getInstId(pair)
 	url := fmt.Sprintf("%s/api/v5/market/candles?instId=%s&bar=%s&limit=%d",
 		endPoint, instId, interval, limit)
 
@@ -305,4 +242,39 @@ func (oc *OkxSingleClient) GetOrderBook(ctx context.Context, pair model.TradingP
 		Bids:   bids,
 		Asks:   asks,
 	}, nil
+}
+
+type OkxConfig struct {
+	IsTestNet  bool
+	Timeout    time.Duration
+	BufferSize int
+	Callback   func(message []byte) error
+}
+
+type OkxClient struct {
+	*OkxSingleClient
+	*OkxStreamClient
+}
+
+func New(config OkxConfig) *OkxClient {
+	streamClient, err := NewStreamClient(config)
+	if err != nil {
+		panic(err)
+	}
+	return &OkxClient{
+		OkxSingleClient: NewSingleClient(config),
+		OkxStreamClient: streamClient,
+	}
+}
+
+func getInstId(pair model.TradingPair) string {
+	base := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
+	switch pair.Category {
+	case trade.SPOT:
+		return base
+	case trade.FUTURES:
+		return base + "-SWAP"
+	default:
+		return base
+	}
 }

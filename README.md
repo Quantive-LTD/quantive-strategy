@@ -9,30 +9,9 @@
 
 - 📊 **Data Integration** – Connect to multiple exchanges and data providers.  
 - ⚙️ **Strategy Engine** – Design and test your own trading strategies.  
-- 🧠 **Analytics Module** – Visualize market trends, price indicators, and risk metrics.  
-- 💾 **Persistence Layer** – Store and query market data with efficient caching.  
 - 🧩 **Modular Design** – Clean architecture suitable for research and production.
 
-## Tech Stack
 
-- **Backend:** Go / Python  
-- **Database:** MySQL / Redis  
-- **Visualization:** React + TypeScript  
-- **Deployment:** Docker + Kubernetes  
-
-## Getting Started
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/quant.git
-cd quant
-
-# Install dependencies
-go mod tidy
-
-# Run the service
-go run main.go
-```
 
 ## External Source 
 Quant integrates multiple external market data sources for real-time and historical analysis:
@@ -46,8 +25,6 @@ Quant integrates multiple external market data sources for real-time and histori
 - OKX
  – Spot, Futures, and Perpetual contracts.
 
-- Bybit
- – Inverse and USDT-margined derivatives data.
 
 
 ## Architecture 

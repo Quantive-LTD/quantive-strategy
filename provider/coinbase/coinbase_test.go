@@ -19,90 +19,523 @@ package coinbase
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/wang900115/quant/model"
 	"github.com/wang900115/quant/model/currency"
 	"github.com/wang900115/quant/model/trade"
 )
 
-func TestGetPrice(t *testing.T) {
-	cb := New()
-	t.Run("SPOT", func(t *testing.T) {
-		pair := model.TradingPair{
-			Base:     currency.BTCSymbol,
-			Quote:    currency.USDTSymbol,
-			Category: trade.SPOT,
-		}
-		price, err := cb.GetPrice(context.Background(), pair)
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
-		}
-		t.Logf("SPOT Price: %s", price.NewPrice.String())
-	})
+// TestCoinbaseSingleClient_GetPrice tests fetching current price from Coinbase
+func TestCoinbaseSingleClient_GetPrice(t *testing.T) {
+	cfg := CoinbaseConfig{
+		IstestNet: false,
+		Timeout:   10 * time.Second,
+	}
+	client := NewSingleClient(cfg)
+
+	testCases := []struct {
+		name    string
+		pair    model.TradingPair
+		wantErr bool
+	}{
+		{
+			name: "SPOT BTC-USD",
+			pair: model.TradingPair{
+				Base:     currency.BTCSymbol,
+				Quote:    currency.USDSymbol,
+				Category: trade.SPOT,
+			},
+			wantErr: false,
+		},
+		{
+			name: "SPOT ETH-USD",
+			pair: model.TradingPair{
+				Base:     currency.ETHSymbol,
+				Quote:    currency.USDSymbol,
+				Category: trade.SPOT,
+			},
+			wantErr: false,
+		},
+		{
+			name: "SPOT BTC-USDT",
+			pair: model.TradingPair{
+				Base:     currency.BTCSymbol,
+				Quote:    currency.USDTSymbol,
+				Category: trade.SPOT,
+			},
+			wantErr: false,
+		},
+		{
+			name: "SPOT ETH-BTC",
+			pair: model.TradingPair{
+				Base:     currency.ETHSymbol,
+				Quote:    currency.BTCSymbol,
+				Category: trade.SPOT,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			price, err := client.GetPrice(ctx, tc.pair)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if price == nil {
+				t.Fatal("expected price point, got nil")
+			}
+
+			if price.NewPrice.IsZero() {
+				t.Error("expected non-zero price")
+			}
+
+			t.Logf("%s Price: %s at %v", tc.name, price.NewPrice.String(), price.UpdatedAt)
+		})
+	}
 }
 
-func TestGetKlines(t *testing.T) {
-	cb := New()
-	t.Run("SPOT", func(t *testing.T) {
-		pair := model.TradingPair{
-			Base:     currency.BTCSymbol,
-			Quote:    currency.USDTSymbol,
-			Category: trade.SPOT,
-		}
-		intervals, err := cb.GetKlines(context.Background(), pair, "1h", 10)
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
-		}
-		if len(intervals) == 0 {
-			t.Fatal("expected intervals, got empty slice")
-		}
-	})
+// TestCoinbaseSingleClient_GetKlines tests fetching kline data
+func TestCoinbaseSingleClient_GetKlines(t *testing.T) {
+	cfg := CoinbaseConfig{
+		IstestNet: false,
+		Timeout:   10 * time.Second,
+	}
+	client := NewSingleClient(cfg)
 
+	testCases := []struct {
+		name        string
+		pair        model.TradingPair
+		granularity string
+		limit       int
+		wantErr     bool
+	}{
+		{
+			name: "3600 second granularity BTC-USD",
+			pair: model.TradingPair{
+				Base:     currency.BTCSymbol,
+				Quote:    currency.USDSymbol,
+				Category: trade.SPOT,
+			},
+			granularity: "3600", // 1 hour
+			limit:       10,
+			wantErr:     false,
+		},
+		{
+			name: "900 second granularity ETH-USD",
+			pair: model.TradingPair{
+				Base:     currency.ETHSymbol,
+				Quote:    currency.USDSymbol,
+				Category: trade.SPOT,
+			},
+			granularity: "900", // 15 minutes
+			limit:       5,
+			wantErr:     false,
+		},
+		{
+			name: "86400 second granularity BTC-USD",
+			pair: model.TradingPair{
+				Base:     currency.BTCSymbol,
+				Quote:    currency.USDSymbol,
+				Category: trade.SPOT,
+			},
+			granularity: "86400", // 1 day
+			limit:       7,
+			wantErr:     false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			intervals, err := client.GetKlines(ctx, tc.pair, tc.granularity, tc.limit)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if len(intervals) == 0 {
+				t.Fatal("expected intervals, got empty slice")
+			}
+
+			// Coinbase may return different number of candles
+			t.Logf("Received %d intervals (requested %d)", len(intervals), tc.limit)
+
+			// Verify first interval structure
+			if len(intervals) > 0 {
+				first := intervals[0]
+				if first.OpeningPrice.IsZero() || first.HighestPrice.IsZero() || first.LowestPrice.IsZero() || first.ClosingPrice.IsZero() {
+					t.Error("expected non-zero OHLC values")
+				}
+
+				t.Logf("First kline: O:%s H:%s L:%s C:%s V:%s",
+					first.OpeningPrice.String(),
+					first.HighestPrice.String(),
+					first.LowestPrice.String(),
+					first.ClosingPrice.String(),
+					first.Volume.String(),
+				)
+			}
+		})
+	}
 }
 
-func TestGetOrderBook(t *testing.T) {
-	cb := New()
-	t.Run("SPOT", func(t *testing.T) {
-		pair := model.TradingPair{
-			Base:     currency.BTCSymbol,
-			Quote:    currency.USDTSymbol,
-			Category: trade.SPOT,
-		}
-		orderBook, err := cb.GetOrderBook(context.Background(), pair, 5)
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
-		}
-		t.Logf("Order Book: %+v", orderBook)
-	})
+// TestCoinbaseSingleClient_GetOrderBook tests fetching order book data
+func TestCoinbaseSingleClient_GetOrderBook(t *testing.T) {
+	cfg := CoinbaseConfig{
+		IstestNet: false,
+		Timeout:   10 * time.Second,
+	}
+	client := NewSingleClient(cfg)
+
+	testCases := []struct {
+		name    string
+		pair    model.TradingPair
+		level   int
+		wantErr bool
+	}{
+		{
+			name: "BTC-USD Level 1",
+			pair: model.TradingPair{
+				Base:     currency.BTCSymbol,
+				Quote:    currency.USDSymbol,
+				Category: trade.SPOT,
+			},
+			level:   1,
+			wantErr: false,
+		},
+		{
+			name: "ETH-USD Level 2",
+			pair: model.TradingPair{
+				Base:     currency.ETHSymbol,
+				Quote:    currency.USDSymbol,
+				Category: trade.SPOT,
+			},
+			level:   2,
+			wantErr: false,
+		},
+		{
+			name: "BTC-USDT Level 2",
+			pair: model.TradingPair{
+				Base:     currency.BTCSymbol,
+				Quote:    currency.USDTSymbol,
+				Category: trade.SPOT,
+			},
+			level:   2,
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			orderBook, err := client.GetOrderBook(ctx, tc.pair, tc.level)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if orderBook == nil {
+				t.Fatal("expected order book, got nil")
+			}
+
+			if len(orderBook.Bids) == 0 {
+				t.Error("expected bids, got empty")
+			}
+
+			if len(orderBook.Asks) == 0 {
+				t.Error("expected asks, got empty")
+			}
+
+			t.Logf("Order Book - Symbol: %s, Bids: %d, Asks: %d",
+				orderBook.Symbol,
+				len(orderBook.Bids),
+				len(orderBook.Asks),
+			)
+
+			if len(orderBook.Bids) > 0 {
+				t.Logf("Best Bid: %s @ %s", orderBook.Bids[0].Quantity.String(), orderBook.Bids[0].Price.String())
+			}
+			if len(orderBook.Asks) > 0 {
+				t.Logf("Best Ask: %s @ %s", orderBook.Asks[0].Quantity.String(), orderBook.Asks[0].Price.String())
+			}
+		})
+	}
 }
 
-func TestWebSocketConnect(t *testing.T) {
-	bc := NewStreamClient()
-	err := bc.Connect()
+// TestCoinbaseStreamClient_Connection tests WebSocket connection
+func TestCoinbaseStreamClient_Connection(t *testing.T) {
+	cfg := CoinbaseConfig{
+		IstestNet:  false,
+		BufferSize: 100,
+		Callback: func(message []byte) error {
+			t.Logf("Received message: %s", string(message))
+			return nil
+		},
+	}
+	client, err := NewStreamClient(cfg)
 	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+		t.Fatalf("failed to create stream client: %v", err)
 	}
-	defer bc.Close()
 
-	if bc.client == nil {
-		t.Fatal("expected client to be initialized, got nil")
+	defer client.Close()
+
+	if client.client == nil {
+		t.Error("client connection is nil")
 	}
-	t.Logf("Successfully connected to Spot WebSocket")
+
+	t.Log("Successfully connected to Coinbase WebSocket")
 }
 
-func TestWebSocketSubscribe(t *testing.T) {
-	bc := NewStreamClient()
-	err := bc.Connect()
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+// TestCoinbaseStreamClient_Subscribe tests subscribing to streams
+func TestCoinbaseStreamClient_Subscribe(t *testing.T) {
+	cfg := CoinbaseConfig{
+		IstestNet:  false,
+		BufferSize: 100,
 	}
-	defer bc.Close()
-	err = bc.Subscribe(context.Background(), model.TradingPair{
+
+	client, err := NewStreamClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to create stream client: %v", err)
+	}
+	pair := model.TradingPair{
 		Base:     currency.BTCSymbol,
-		Quote:    currency.USDTSymbol,
+		Quote:    currency.USDSymbol,
 		Category: trade.SPOT,
-	}, []string{"ticker"})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
 	}
+
+	testCases := []struct {
+		name         string
+		channelTypes []string
+	}{
+		{
+			name:         "Ticker channel",
+			channelTypes: []string{"ticker"},
+		},
+		{
+			name:         "Matches channel",
+			channelTypes: []string{"matches"},
+		},
+		{
+			name:         "Level2 channel",
+			channelTypes: []string{"level2"},
+		},
+		{
+			name:         "Multiple channels",
+			channelTypes: []string{"ticker", "matches"},
+		},
+	}
+	defer client.Close()
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := client.SubscribeStream(pair, tc.channelTypes)
+			if err != nil {
+				t.Fatalf("failed to subscribe: %v", err)
+			}
+			t.Logf("Successfully subscribed to %v", tc.channelTypes)
+		})
+	}
+}
+
+// TestCoinbaseStreamClient_ReceiveData tests receiving stream data
+func TestCoinbaseStreamClient_ReceiveData(t *testing.T) {
+	cfg := CoinbaseConfig{
+		IstestNet:  false,
+		BufferSize: 100,
+	}
+
+	client, err := NewStreamClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to create stream client: %v", err)
+	}
+
+	pair := model.TradingPair{
+		Base:     currency.BTCSymbol,
+		Quote:    currency.USDSymbol,
+		Category: trade.SPOT,
+	}
+
+	defer client.Close()
+
+	// Subscribe to ticker channel
+	err = client.SubscribeStream(pair, []string{"ticker"})
+	if err != nil {
+		t.Fatalf("failed to subscribe: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	priceChan, _, _ := client.ReceiveStream()
+
+	// Start dispatcher
+	go func() {
+		if err := client.Dispatch(ctx); err != nil && err != context.DeadlineExceeded {
+			t.Logf("dispatcher error: %v", err)
+		}
+	}()
+
+	// Collect price updates
+	receivedCount := 0
+	maxUpdates := 5
+
+	for receivedCount < maxUpdates {
+		select {
+		case price := <-priceChan:
+			receivedCount++
+			t.Logf("Update #%d - Price: %s at %v", receivedCount, price.NewPrice.String(), price.UpdatedAt)
+		case <-ctx.Done():
+			t.Fatalf("timeout waiting for updates, received %d/%d", receivedCount, maxUpdates)
+		}
+	}
+
+	if receivedCount < maxUpdates {
+		t.Errorf("expected at least %d updates, got %d", maxUpdates, receivedCount)
+	}
+}
+
+// TestCoinbaseStreamClient_MultipleChannels tests subscribing to multiple channel types
+func TestCoinbaseStreamClient_MultipleChannels(t *testing.T) {
+	cfg := CoinbaseConfig{
+		IstestNet:  false,
+		BufferSize: 100,
+	}
+
+	client, err := NewStreamClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to create stream client: %v", err)
+	}
+
+	pair := model.TradingPair{
+		Base:     currency.BTCSymbol,
+		Quote:    currency.USDSymbol,
+		Category: trade.SPOT,
+	}
+
+	channels := []string{"ticker", "matches", "level2"}
+
+	err = client.SubscribeStream(pair, channels)
+	if err != nil {
+		t.Fatalf("failed to subscribe to multiple channels: %v", err)
+	}
+
+	t.Logf("Successfully subscribed to %d channels: %v", len(channels), channels)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	priceChan, _, orderBookChan := client.ReceiveStream()
+
+	// Start dispatcher
+	go func() {
+		if err := client.Dispatch(ctx); err != nil && err != context.DeadlineExceeded {
+			t.Logf("dispatcher error: %v", err)
+		}
+	}()
+
+	// Collect data from different channels
+	priceCount := 0
+	orderBookCount := 0
+	maxEach := 2
+
+	for priceCount < maxEach || orderBookCount < maxEach {
+		select {
+		case price := <-priceChan:
+			if priceCount < maxEach {
+				priceCount++
+				t.Logf("Ticker update #%d: %s", priceCount, price.NewPrice.String())
+			}
+		case ob := <-orderBookChan:
+			if orderBookCount < maxEach {
+				orderBookCount++
+				t.Logf("OrderBook update #%d: %d bids, %d asks", orderBookCount, len(ob.Bids), len(ob.Asks))
+			}
+		case <-ctx.Done():
+			t.Logf("Timeout - received %d price updates and %d orderbook updates", priceCount, orderBookCount)
+			return
+		}
+	}
+
+	t.Logf("Successfully received data from multiple channels")
+}
+
+// TestCoinbaseConfig_DefaultValues tests configuration with default values
+func TestCoinbaseConfig_DefaultValues(t *testing.T) {
+	cfg := CoinbaseConfig{
+		IstestNet: false,
+	}
+
+	client := NewSingleClient(cfg)
+	if client == nil {
+		t.Fatal("expected client, got nil")
+	}
+
+	if client.client.Timeout != defaultTimeout {
+		t.Errorf("expected default timeout %v, got %v", defaultTimeout, client.client.Timeout)
+	}
+
+	t.Log("Default configuration values applied correctly")
+}
+
+// TestCoinbaseConfig_CustomValues tests configuration with custom values
+func TestCoinbaseConfig_CustomValues(t *testing.T) {
+	customTimeout := 5 * time.Second
+	customBufferSize := 50
+
+	cfg := CoinbaseConfig{
+		IstestNet:  false,
+		Timeout:    customTimeout,
+		BufferSize: customBufferSize,
+	}
+
+	client := NewSingleClient(cfg)
+	if client == nil {
+		t.Fatal("expected client, got nil")
+	}
+
+	if client.client.Timeout != customTimeout {
+		t.Errorf("expected custom timeout %v, got %v", customTimeout, client.client.Timeout)
+	}
+
+	streamClient, err := NewStreamClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to create stream client: %v", err)
+	}
+
+	if streamClient.bufferSize != customBufferSize {
+		t.Errorf("expected custom buffer size %d, got %d", customBufferSize, streamClient.bufferSize)
+	}
+
+	t.Log("Custom configuration values applied correctly")
 }
