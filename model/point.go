@@ -132,7 +132,10 @@ func ParseOrderEntries[T OrderBookEntry](entries [][]interface{}) ([]T, error) {
 func PushToChan[T PriceTick](ch chan T, data T) {
 	select {
 	case ch <- data:
+		// Successfully sent to channel
 	default:
-		// drop if channel is full
+		// Channel is full - data is dropped
+		// TODO: Consider adding metrics here to track dropped messages
+		// Example: metrics.IncrementDroppedMessages("price_point")
 	}
 }

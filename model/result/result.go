@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/wang900115/quant/model"
 )
 
 type StrategyStat struct {
@@ -28,9 +29,9 @@ type StrategyStat struct {
 
 type StrategyGeneralResult struct {
 	StrategyName  string
-	StrategyType  string
+	StrategyType  model.StrategyType
 	Triggered     bool
-	TriggerType   string
+	TriggerType   model.StrategyCategory
 	LastPrice     decimal.Decimal
 	Stat          StrategyStat
 	LastTime      time.Time
@@ -40,9 +41,9 @@ type StrategyGeneralResult struct {
 
 type StrategyHybridResult struct {
 	StrategyName  string
-	StrategyType  string
+	StrategyType  model.StrategyType
 	Triggered     bool
-	TriggerType   string
+	TriggerType   model.StrategyCategory
 	LastTime      time.Time
 	LastPrice     decimal.Decimal
 	TimeThreshold time.Duration
@@ -78,7 +79,7 @@ func (sr *StrategyHybridResult) Marshall() map[string]interface{} {
 	}
 }
 
-func NewGeneral(strategyName, strategyType, triggerType string, lastPrice, priceThreshold decimal.Decimal, lastTime time.Time, timeThreshold time.Duration) *StrategyGeneralResult {
+func NewGeneral(strategyName string, strategyType model.StrategyType, triggerType model.StrategyCategory, lastPrice, priceThreshold decimal.Decimal, lastTime time.Time, timeThreshold time.Duration) *StrategyGeneralResult {
 	return &StrategyGeneralResult{
 		StrategyName:  strategyName,
 		StrategyType:  strategyType,
@@ -92,7 +93,7 @@ func NewGeneral(strategyName, strategyType, triggerType string, lastPrice, price
 	}
 }
 
-func NewHybrid(strategyName, strategyType string, LastPrice, stopPriceThreshold, profitPriceThreshold decimal.Decimal, lastTime time.Time, timeThreshold time.Duration) *StrategyHybridResult {
+func NewHybrid(strategyName string, strategyType model.StrategyType, LastPrice, stopPriceThreshold, profitPriceThreshold decimal.Decimal, lastTime time.Time, timeThreshold time.Duration) *StrategyHybridResult {
 	return &StrategyHybridResult{
 		StrategyName:  strategyName,
 		StrategyType:  strategyType,
@@ -108,15 +109,15 @@ func NewHybrid(strategyName, strategyType string, LastPrice, stopPriceThreshold,
 	}
 }
 
-func (sr *StrategyGeneralResult) SetTriggered(triggered bool) {
-	sr.Triggered = triggered
-}
-
 func (sr *StrategyGeneralResult) SetError(err error) {
 	sr.Error = err
 }
 
-func (sr *StrategyHybridResult) SetTriggered(triggered bool, triggerType string) {
+func (sr *StrategyGeneralResult) SetTriggered(triggered bool) {
+	sr.Triggered = triggered
+}
+
+func (sr *StrategyHybridResult) SetTriggered(triggered bool, triggerType model.StrategyCategory) {
 	sr.Triggered = triggered
 	sr.TriggerType = triggerType
 }
