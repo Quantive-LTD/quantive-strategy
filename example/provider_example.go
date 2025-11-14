@@ -26,7 +26,7 @@ import (
 	"github.com/wang900115/quant/provider/okx"
 )
 
-func ProviderExample() {
+func ProviderExample1() {
 	ps := provider.New()
 	ps.Register(model.BINANCE, binance.New(binance.BinanceConfig{}))
 	ps.Register(model.COINBASE, coinbase.New(coinbase.CoinbaseConfig{}))
@@ -46,12 +46,6 @@ func ProviderExample() {
 	}
 	log.Printf("Price for %s: %+v", tradingPair.Symbol(), *pricePoint)
 
-	tradingPair = model.TradingPair{
-		ExchangeID: model.COINBASE,
-		Base:       currency.BTCSymbol,
-		Quote:      currency.USDTSymbol,
-		Category:   trade.SPOT,
-	}
 	pricePoint, err = ps.GetPrice(context.Background(), tradingPair)
 	if err != nil {
 		log.Fatalf("Failed to get price: %v \n", err)
@@ -69,4 +63,46 @@ func ProviderExample() {
 		log.Fatalf("Failed to get order book: %v \n", err)
 	}
 	log.Printf("Order book for %s: %+v \n", tradingPair.Symbol(), orderBook)
+}
+
+func ProviderExample2() {
+	ps := provider.New()
+	ps.Register(model.BINANCE, binance.New(binance.BinanceConfig{}))
+	ps.Register(model.COINBASE, coinbase.New(coinbase.CoinbaseConfig{}))
+	ps.Register(model.OKX, okx.New(okx.OkxConfig{}))
+	log.Printf("Providers registered: %+v \n", ps.ListProviders())
+	tradingPair := model.TradingPair{
+		ExchangeID: model.COINBASE,
+		Base:       currency.BTCSymbol,
+		Quote:      currency.USDTSymbol,
+		Category:   trade.SPOT,
+	}
+	if err := ps.SubscribeStream(tradingPair, []string{"ticker", "order_book"}); err != nil {
+		log.Fatalf("Failed to subscribe to stream: %v \n", err)
+	}
+	ps.StartStream(context.Background())
+
+	ch1, ch2, ch3, err := ps.ReceiveStream(tradingPair)
+	if err != nil {
+		log.Fatalf("Failed to receive stream: %v \n", err)
+	}
+
+	go func() {
+		for pricePoint := range ch1 {
+			log.Printf("Stream PricePoint: %+v \n", pricePoint)
+		}
+	}()
+
+	go func() {
+		for priceInterval := range ch2 {
+			log.Printf("Stream PriceInterval: %+v \n", priceInterval)
+		}
+	}()
+
+	go func() {
+		for orderBook := range ch3 {
+			log.Printf("Stream OrderBook: %+v \n", orderBook)
+		}
+	}()
+	select {}
 }
