@@ -30,6 +30,7 @@ type Provider interface {
 	GetKlines(ctx context.Context, pair model.TradingPair, interval string, limit int) ([]model.PriceInterval, error)
 	GetOrderBook(ctx context.Context, pair model.TradingPair, limit int) (*model.OrderBook, error)
 	SubscribeStream(pair model.TradingPair, channel []string) error
+	Dispatch(ctx context.Context) error
 	ReceiveStream() (<-chan model.PricePoint, <-chan model.PriceInterval, <-chan model.OrderBook)
 	Close() error
 }
@@ -85,6 +86,45 @@ func (p *Providers) GetOrderBook(ctx context.Context, pair model.TradingPair, li
 		return nil, errMissingProvider
 	}
 	return provider.GetOrderBook(ctx, pair, limit)
+}
+
+func (p *Providers) SubscribeStream(pair model.TradingPair, channel []string) error {
+	p.mu.RLock()
+	provider, ok := p.registry[pair.ExchangeID]
+	p.mu.RUnlock()
+	if !ok {
+		return errMissingProvider
+	}
+	return provider.SubscribeStream(pair, channel)
+}
+
+func (p *Providers) StartStream(ctx context.Context) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	for _, provider := range p.registry {
+		go provider.Dispatch(ctx)
+	}
+}
+
+func (p *Providers) ReceiveStream(pair model.TradingPair) (<-chan model.PricePoint, <-chan model.PriceInterval, <-chan model.OrderBook, error) {
+	p.mu.RLock()
+	provider, ok := p.registry[pair.ExchangeID]
+	p.mu.RUnlock()
+	if !ok {
+		return nil, nil, nil, errMissingProvider
+	}
+	ch1, ch2, ch3 := provider.ReceiveStream()
+	return ch1, ch2, ch3, nil
+}
+
+func (p *Providers) CloseProvider(exchangeID model.ExchangeId) error {
+	p.mu.RLock()
+	provider, ok := p.registry[exchangeID]
+	p.mu.RUnlock()
+	if !ok {
+		return errMissingProvider
+	}
+	return provider.Close()
 }
 
 func (p *Providers) ListProviders() []model.Exchange {
