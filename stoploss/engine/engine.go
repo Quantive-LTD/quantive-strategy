@@ -77,16 +77,22 @@ func (csm *Engine) RegisterStrategy(name string, strategy interface{}) error {
 	switch s := strategy.(type) {
 	case stoploss.FixedStopLoss:
 		csm.portfolio.RegistFixedStoplossStrategy(name, s)
+		csm.fss = true
 	case stoploss.TimeBasedStopLoss:
 		csm.portfolio.RegistTimedStoplossStrategy(name, s)
+		csm.tss = true
 	case stoploss.FixedTakeProfit:
 		csm.portfolio.RegistFixedTakeProfitStrategy(name, s)
+		csm.fts = true
 	case stoploss.TimeBasedTakeProfit:
 		csm.portfolio.RegistTimedTakeProfitStrategy(name, s)
+		csm.tts = true
 	case stoploss.HybridWithoutTime:
 		csm.portfolio.RegistHybridStrategy(name, s)
+		csm.hfs = true
 	case stoploss.HybridWithTime:
 		csm.portfolio.RegistHybridTimedStrategy(name, s)
+		csm.hts = true
 	default:
 		return errNonsupported
 	}
@@ -98,36 +104,60 @@ func (csm *Engine) Start() error {
 	if csm.portfolio.count == 0 {
 		return errNoStrategies
 	}
-
-	csm.wg.Add(csm.portfolio.count)
+	goroutineCount := 0
 	if len(csm.portfolio.fixedStoplossStrategies) > 0 {
+		goroutineCount++
+		csm.wg.Add(1)
 		go csm.handleFixedStopLoss()
 	}
 	if len(csm.portfolio.timedStoplossStrategies) > 0 {
+		goroutineCount++
+		csm.wg.Add(1)
 		go csm.handleTimedStopLoss()
 	}
 	if len(csm.portfolio.fixedTakeProfitStrategies) > 0 {
+		goroutineCount++
+		csm.wg.Add(1)
 		go csm.handleFixedProfit()
 	}
 	if len(csm.portfolio.timedTakeProfitStrategies) > 0 {
+		goroutineCount++
+		csm.wg.Add(1)
 		go csm.handleTimedProfit()
 	}
 	if len(csm.portfolio.hybridFixedStrategies) > 0 {
+		goroutineCount++
+		csm.wg.Add(1)
 		go csm.handleFixedHybrid()
 	}
 	if len(csm.portfolio.hybridTimedStrategies) > 0 {
+		goroutineCount++
+		csm.wg.Add(1)
 		go csm.handleTimedHybrid()
 	}
+
 	generalResult, hybridResult := csm.execution.getResult()
 	if csm.portfolio.openGeneral {
 		csm.wg.Add(1)
-		go csm.Reporter.ProcessGeneralResult(generalResult)
+		go csm.Reporter.ProcessGeneralResult(generalResult, csm.ctx, &csm.wg)
 	}
 
 	if csm.portfolio.openHybrid {
 		csm.wg.Add(1)
-		go csm.Reporter.ProcessHybridResult(hybridResult)
+		go csm.Reporter.ProcessHybridResult(hybridResult, csm.ctx, &csm.wg)
 	}
+
+	// Log the number of started goroutines
+	log.Printf("Started %d strategy goroutines + %d reporter goroutines", goroutineCount, func() int {
+		count := 0
+		if csm.portfolio.openGeneral {
+			count++
+		}
+		if csm.portfolio.openHybrid {
+			count++
+		}
+		return count
+	}())
 
 	return nil
 }
@@ -150,7 +180,6 @@ func (csm *Engine) handleFixedStopLoss() {
 		case update := <-csm.execution.fixedStoplossChannel:
 			csm.processFixedStopStrategies(update)
 		case <-ticker.C:
-			// Periodic health check
 			log.Println("[handleFixedStopLoss] heartbeat")
 			continue
 		}
@@ -172,7 +201,6 @@ func (csm *Engine) handleTimedStopLoss() {
 		case update := <-csm.execution.timedStoplossChannel:
 			csm.processTimedStopStrategies(update)
 		case <-ticker.C:
-			// Periodic health check
 			log.Println("[handleTimedStopLoss] heartbeat")
 			continue
 		}
@@ -193,7 +221,6 @@ func (csm *Engine) handleFixedProfit() {
 		case update := <-csm.execution.fixedTakeProfitChannel:
 			csm.processFixedProfitStrategies(update)
 		case <-ticker.C:
-			// Periodic health check
 			log.Println("[handleFixedProfit] heartbeat")
 			continue
 		}
@@ -214,7 +241,6 @@ func (csm *Engine) handleTimedProfit() {
 		case update := <-csm.execution.timedTakeProfitChannel:
 			csm.processTimedProfitStrategies(update)
 		case <-ticker.C:
-			// Periodic health check
 			log.Println("[handleTimedProfit] heartbeat")
 			continue
 		}
@@ -235,7 +261,6 @@ func (csm *Engine) handleFixedHybrid() {
 		case update := <-csm.execution.hybridFixedChannel:
 			csm.processHybridFixedStrategies(update)
 		case <-ticker.C:
-			// Periodic health check
 			log.Println("[handleFixedHybrid] heartbeat")
 			continue
 		}
@@ -256,7 +281,6 @@ func (csm *Engine) handleTimedHybrid() {
 		case update := <-csm.execution.hybridTimedChannel:
 			csm.processHybridTimedStrategies(update)
 		case <-ticker.C:
-			// Periodic health check
 			log.Println("[handleTimedHybrid] heartbeat")
 			continue
 		}
@@ -404,32 +428,43 @@ func (csm *Engine) processHybridTimedStrategies(update model.PricePoint) {
 }
 
 func (csm *Engine) Collect(pricePoint model.PricePoint, callback func()) {
-	channels := []struct {
-		ch   chan model.PricePoint
-		name string
-	}{
-		{csm.execution.fixedStoplossChannel, "fixed stoploss"},
-		{csm.execution.timedStoplossChannel, "timed stoploss"},
-		{csm.execution.fixedTakeProfitChannel, "fixed take profit"},
-		{csm.execution.timedTakeProfitChannel, "timed take profit"},
-		{csm.execution.hybridFixedChannel, "hybrid fixed"},
-		{csm.execution.hybridTimedChannel, "hybrid timed"},
+	if csm.fss {
+		dataFeed(pricePoint, csm.execution.fixedStoplossChannel, callback)
 	}
+	if csm.tss {
+		dataFeed(pricePoint, csm.execution.timedStoplossChannel, callback)
+	}
+	if csm.fts {
+		dataFeed(pricePoint, csm.execution.fixedTakeProfitChannel, callback)
+	}
+	if csm.tts {
+		dataFeed(pricePoint, csm.execution.timedTakeProfitChannel, callback)
+	}
+	if csm.hfs {
+		dataFeed(pricePoint, csm.execution.hybridFixedChannel, callback)
+	}
+	if csm.hts {
+		dataFeed(pricePoint, csm.execution.hybridTimedChannel, callback)
+	}
+}
 
-	for _, c := range channels {
-		select {
-		case c.ch <- pricePoint:
-			// log.Printf("Sent to %s channel \n", c.name)
-		default:
-			callback()
-		}
+func dataFeed(pricePoint model.PricePoint, channel chan model.PricePoint, callback func()) {
+	select {
+	case channel <- pricePoint:
+		// Successfully sent to channel
+	default:
+		// Channel is full, handle accordingly
+		callback()
 	}
 }
 
 func (csm *Engine) Stop() {
+	// 1. Cancel context to signal all goroutines to stop
 	csm.cancel()
-	csm.execution.closeChannels()
+	// 2. Wait for all goroutines to finish gracefully
 	csm.wg.Wait()
+	// 3. Close channels after goroutines have stopped
+	csm.execution.closeChannels()
 }
 
 // func (csm *Manager) Stats() map[string]interface{} {

@@ -44,12 +44,12 @@ func CombineExample() {
 	manger := engine.New(engine.Config{
 		BufferSize:    100,
 		ReadTimeout:   time.Second * 5,
-		CheckInterval: time.Second * 3,
+		CheckInterval: time.Second * 10,
 	})
 
 	trailingStopStrategy, _ := strategy.NewFixedTrailingStop(
 		pricePoint.NewPrice,
-		decimal.NewFromFloat(0.3),
+		decimal.NewFromFloat(0.03),
 		nil,
 	)
 	manger.RegisterStrategy("Fixed-Trailing-Stop-3%", trailingStopStrategy)
@@ -103,5 +103,5 @@ func CombineExample() {
 	manger.Stop()
 	cancel()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 }

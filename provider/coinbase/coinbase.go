@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -35,7 +34,6 @@ const (
 )
 
 var defaultCallback = func(message []byte) error {
-	log.Println(string(message))
 	return nil
 }
 
