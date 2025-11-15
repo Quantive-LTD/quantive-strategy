@@ -63,7 +63,7 @@ func NewSingleClient(cfg CoinbaseConfig) *CoinbaseSingleClient {
 	}
 }
 
-func (cc *CoinbaseSingleClient) GetPrice(ctx context.Context, pair model.TradingPair) (*model.PricePoint, error) {
+func (cc *CoinbaseSingleClient) GetPrice(ctx context.Context, pair model.QuotesPair) (*model.PricePoint, error) {
 	symbol := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
 	url := fmt.Sprintf("%s/products/%s/ticker", spotEndpoint, symbol)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -98,7 +98,7 @@ func (cc *CoinbaseSingleClient) GetPrice(ctx context.Context, pair model.Trading
 	return data, nil
 }
 
-func (cc *CoinbaseSingleClient) GetKlines(ctx context.Context, pair model.TradingPair, granularity string, limit int) ([]model.PriceInterval, error) {
+func (cc *CoinbaseSingleClient) GetKlines(ctx context.Context, pair model.QuotesPair, granularity string, limit int) ([]model.PriceInterval, error) {
 	symbol := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
 
 	granularityInt := int(parse.ParseInterval(granularity).Seconds())
@@ -190,7 +190,7 @@ func (cc *CoinbaseSingleClient) GetKlines(ctx context.Context, pair model.Tradin
 	return intervals, nil
 }
 
-func (cc *CoinbaseSingleClient) GetOrderBook(ctx context.Context, pair model.TradingPair, limit int) (*model.OrderBook, error) {
+func (cc *CoinbaseSingleClient) GetOrderBook(ctx context.Context, pair model.QuotesPair, limit int) (*model.OrderBook, error) {
 	symbol := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
 	url := fmt.Sprintf("%s/products/%s/book?level=2", spotEndpoint, symbol)
 

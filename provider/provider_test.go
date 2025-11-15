@@ -36,11 +36,11 @@ func TestProvider_GetPrice(t *testing.T) {
 
 	tests := []struct {
 		name string
-		pair model.TradingPair
+		pair model.QuotesPair
 	}{
 		{
 			name: "Binance SPOT BTC-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.BINANCE,
 				Base:       currency.BTCSymbol,
 				Quote:      currency.USDTSymbol,
@@ -49,7 +49,7 @@ func TestProvider_GetPrice(t *testing.T) {
 		},
 		{
 			name: "Coinbase SPOT BTC-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.COINBASE,
 				Base:       currency.BTCSymbol,
 				Quote:      currency.USDTSymbol,
@@ -58,7 +58,7 @@ func TestProvider_GetPrice(t *testing.T) {
 		},
 		{
 			name: "OKX SPOT BTC-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.OKX,
 				Base:       currency.BTCSymbol,
 				Quote:      currency.USDTSymbol,
@@ -67,7 +67,7 @@ func TestProvider_GetPrice(t *testing.T) {
 		},
 		{
 			name: "Binance FUTURES BTC-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.BINANCE,
 				Base:       currency.BTCSymbol,
 				Quote:      currency.USDTSymbol,
@@ -76,7 +76,7 @@ func TestProvider_GetPrice(t *testing.T) {
 		},
 		{
 			name: "OKX FUTURES ETH-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.OKX,
 				Base:       currency.ETHSymbol,
 				Quote:      currency.USDTSymbol,
@@ -162,7 +162,7 @@ func TestProvider_UnregisterProvider(t *testing.T) {
 	}
 
 	// Try to get price from unregistered provider
-	pair := model.TradingPair{
+	pair := model.QuotesPair{
 		ExchangeID: model.BINANCE,
 		Base:       currency.BTCSymbol,
 		Quote:      currency.USDTSymbol,
@@ -187,13 +187,13 @@ func TestProvider_GetKlines(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		pair     model.TradingPair
+		pair     model.QuotesPair
 		interval string
 		limit    int
 	}{
 		{
 			name: "Binance SPOT 1m",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.BINANCE,
 				Base:       currency.BTCSymbol,
 				Quote:      currency.USDTSymbol,
@@ -204,7 +204,7 @@ func TestProvider_GetKlines(t *testing.T) {
 		},
 		{
 			name: "OKX SPOT 5m",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.OKX,
 				Base:       currency.ETHSymbol,
 				Quote:      currency.USDTSymbol,
@@ -215,7 +215,7 @@ func TestProvider_GetKlines(t *testing.T) {
 		},
 		{
 			name: "Coinbase SPOT 1h",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.COINBASE,
 				Base:       currency.BTCSymbol,
 				Quote:      currency.USDTSymbol,
@@ -226,7 +226,7 @@ func TestProvider_GetKlines(t *testing.T) {
 		},
 		{
 			name: "Binance FUTURES 15m",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.BINANCE,
 				Base:       currency.BTCSymbol,
 				Quote:      currency.USDTSymbol,
@@ -237,7 +237,7 @@ func TestProvider_GetKlines(t *testing.T) {
 		},
 		{
 			name: "OKX FUTURES 1H",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.OKX,
 				Base:       currency.ETHSymbol,
 				Quote:      currency.USDTSymbol,
@@ -289,12 +289,12 @@ func TestProvider_GetOrderBook(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		pair  model.TradingPair
+		pair  model.QuotesPair
 		limit int
 	}{
 		{
 			name: "Binance SPOT BTC-USDT depth 5",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.BINANCE,
 				Base:       currency.BTCSymbol,
 				Quote:      currency.USDTSymbol,
@@ -304,7 +304,7 @@ func TestProvider_GetOrderBook(t *testing.T) {
 		},
 		{
 			name: "Coinbase SPOT BTC-USDT depth 10",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.COINBASE,
 				Base:       currency.BTCSymbol,
 				Quote:      currency.USDTSymbol,
@@ -314,7 +314,7 @@ func TestProvider_GetOrderBook(t *testing.T) {
 		},
 		{
 			name: "OKX SPOT ETH-USDT depth 5",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.OKX,
 				Base:       currency.ETHSymbol,
 				Quote:      currency.USDTSymbol,
@@ -324,7 +324,7 @@ func TestProvider_GetOrderBook(t *testing.T) {
 		},
 		{
 			name: "Binance FUTURES BTC-USDT depth 5",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.BINANCE,
 				Base:       currency.BTCSymbol,
 				Quote:      currency.USDTSymbol,
@@ -334,7 +334,7 @@ func TestProvider_GetOrderBook(t *testing.T) {
 		},
 		{
 			name: "OKX FUTURES ETH-USDT depth 10",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				ExchangeID: model.OKX,
 				Base:       currency.ETHSymbol,
 				Quote:      currency.USDTSymbol,

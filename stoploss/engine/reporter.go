@@ -26,10 +26,13 @@ type Report struct {
 	hybridCount  metric.CounterInt64
 	triggerCount metric.CounterInt64
 	errorCount   metric.CounterInt64
+	Callback     func(interface{})
 }
 
-func NewReport() *Report {
-	return &Report{}
+func NewReport(Callback func(interface{})) *Report {
+	return &Report{
+		Callback: Callback,
+	}
 }
 
 func (rp *Report) ProcessGeneralResult(res <-chan result.StrategyGeneralResult, ctx context.Context) {
@@ -57,6 +60,9 @@ func (rp *Report) ProcessGeneralResult(res <-chan result.StrategyGeneralResult, 
 				fmt.Printf("🔔 TRIGGER: %s (%s) - %s at price %s\n",
 					r.StrategyName, r.StrategyType, r.TriggerType,
 					r.LastPrice.String())
+				if rp.Callback != nil {
+					rp.Callback(r)
+				}
 			} else {
 				fmt.Printf("📊 UPDATE: %s (%s) - threshold: %s, price: %s\n",
 					r.StrategyName, r.StrategyType,
@@ -89,6 +95,9 @@ func (rp *Report) ProcessHybridResult(res <-chan result.StrategyHybridResult, ct
 				rp.triggerCount.Inc(1)
 				fmt.Printf("🔔 HYBRID TRIGGER: %s at price %s stoploss at %s take profit at %s\n",
 					r.StrategyName, r.LastPrice.String(), r.StopStat.PriceThreshold.String(), r.ProfitStat.PriceThreshold.String())
+				if rp.Callback != nil {
+					rp.Callback(r)
+				}
 			} else {
 				fmt.Printf("📊 HYBRID UPDATE: %s at price %s stoploss at %s take profit at %s\n",
 					r.StrategyName, r.LastPrice.String(), r.StopStat.PriceThreshold.String(), r.ProfitStat.PriceThreshold.String())

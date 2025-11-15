@@ -30,7 +30,7 @@ type Execution struct {
 	hybridResults  chan result.StrategyHybridResult
 }
 
-func NewExecutionManager(bufferSize int) *Execution {
+func NewExecutionManager(bufferSize int, bufferRSize int) *Execution {
 	return &Execution{
 		fixedStoplossChannel:   make(chan model.PricePoint, bufferSize),
 		timedStoplossChannel:   make(chan model.PricePoint, bufferSize),
@@ -38,8 +38,8 @@ func NewExecutionManager(bufferSize int) *Execution {
 		timedTakeProfitChannel: make(chan model.PricePoint, bufferSize),
 		hybridFixedChannel:     make(chan model.PricePoint, bufferSize),
 		hybridTimedChannel:     make(chan model.PricePoint, bufferSize),
-		generalResults:         make(chan result.StrategyGeneralResult, bufferSize),
-		hybridResults:          make(chan result.StrategyHybridResult, bufferSize),
+		generalResults:         make(chan result.StrategyGeneralResult, bufferRSize),
+		hybridResults:          make(chan result.StrategyHybridResult, bufferRSize),
 	}
 }
 

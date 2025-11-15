@@ -73,7 +73,7 @@ func (cc *CoinbaseStreamClient) ReceiveStream() (<-chan model.PricePoint, <-chan
 	return cc.newPriceChan, cc.priceIntervalChan, cc.orderBookChan
 }
 
-func (cc *CoinbaseStreamClient) SubscribeStream(pair model.TradingPair, channelsType []string) error {
+func (cc *CoinbaseStreamClient) SubscribeStream(pair model.QuotesPair, channelsType []string) error {
 	symbol := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
 	subscribeMsg := map[string]interface{}{
 		"type":        "subscribe",

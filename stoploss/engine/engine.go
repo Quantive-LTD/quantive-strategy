@@ -39,6 +39,8 @@ var (
 type Config struct {
 	// Buffer size for internal channels
 	BufferSize int
+	// Buffer size for results channels
+	BufferRSize int
 	// Timeout for reading data from channels
 	ReadTimeout time.Duration
 	// Heartbeat interval for strategy processing goroutines
@@ -47,6 +49,8 @@ type Config struct {
 	HeartbeatInterval time.Duration
 	// Interval between for failed goroutine retry mechanism
 	RetryInterval time.Duration
+	// Report Callback func
+	ReportCallback func(interface{})
 }
 
 func DefaultConfig() Config {
@@ -54,7 +58,7 @@ func DefaultConfig() Config {
 		BufferSize:        2048,
 		ReadTimeout:       3 * time.Second,
 		CheckInterval:     5 * time.Second,
-		HeartbeatInterval: 5 * time.Second,
+		HeartbeatInterval: 15 * time.Second,
 		RetryInterval:     1 * time.Second,
 	}
 }
@@ -72,8 +76,8 @@ func New(config Config) *StrategyEngine {
 	return &StrategyEngine{
 		engine:    NewEngine(config.RetryInterval, config.CheckInterval),
 		portfolio: NewPortfolio(),
-		execution: NewExecutionManager(config.BufferSize),
-		Reporter:  NewReport(),
+		execution: NewExecutionManager(config.BufferSize, config.BufferRSize),
+		Reporter:  NewReport(config.ReportCallback),
 		Metrics:   NewMetrics(),
 		Config:    config,
 	}
@@ -167,6 +171,9 @@ func (csm *StrategyEngine) Start() error {
 		return count
 	}())
 
+	time.Sleep(30 * time.Second)
+
+	log.Println(csm.Snapshot())
 	return nil
 }
 
@@ -530,11 +537,6 @@ func (e *Engine) SafeGo(fn func(ctx context.Context), restartFunc func()) {
 				return
 			case r := <-panicCh:
 				log.Printf("[Engine.SafeGo] goroutine panic recovered: %v\n%s", r, debug.Stack())
-				if restartFunc != nil {
-					restartFunc()
-				}
-			case <-time.After(e.HealthCheck):
-				log.Println("[Engine.SafeGo] goroutine health check timeout, restarting...")
 				if restartFunc != nil {
 					restartFunc()
 				}

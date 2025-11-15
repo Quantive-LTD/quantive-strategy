@@ -36,12 +36,12 @@ func TestCoinbaseSingleClient_GetPrice(t *testing.T) {
 
 	testCases := []struct {
 		name    string
-		pair    model.TradingPair
+		pair    model.QuotesPair
 		wantErr bool
 	}{
 		{
 			name: "SPOT BTC-USD",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDSymbol,
 				Category: trade.SPOT,
@@ -50,7 +50,7 @@ func TestCoinbaseSingleClient_GetPrice(t *testing.T) {
 		},
 		{
 			name: "SPOT ETH-USD",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.ETHSymbol,
 				Quote:    currency.USDSymbol,
 				Category: trade.SPOT,
@@ -59,7 +59,7 @@ func TestCoinbaseSingleClient_GetPrice(t *testing.T) {
 		},
 		{
 			name: "SPOT BTC-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.SPOT,
@@ -68,7 +68,7 @@ func TestCoinbaseSingleClient_GetPrice(t *testing.T) {
 		},
 		{
 			name: "SPOT ETH-BTC",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.ETHSymbol,
 				Quote:    currency.BTCSymbol,
 				Category: trade.SPOT,
@@ -118,14 +118,14 @@ func TestCoinbaseSingleClient_GetKlines(t *testing.T) {
 
 	testCases := []struct {
 		name        string
-		pair        model.TradingPair
+		pair        model.QuotesPair
 		granularity string
 		limit       int
 		wantErr     bool
 	}{
 		{
 			name: "3600 second granularity BTC-USD",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDSymbol,
 				Category: trade.SPOT,
@@ -136,7 +136,7 @@ func TestCoinbaseSingleClient_GetKlines(t *testing.T) {
 		},
 		{
 			name: "900 second granularity ETH-USD",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.ETHSymbol,
 				Quote:    currency.USDSymbol,
 				Category: trade.SPOT,
@@ -147,7 +147,7 @@ func TestCoinbaseSingleClient_GetKlines(t *testing.T) {
 		},
 		{
 			name: "86400 second granularity BTC-USD",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDSymbol,
 				Category: trade.SPOT,
@@ -212,13 +212,13 @@ func TestCoinbaseSingleClient_GetOrderBook(t *testing.T) {
 
 	testCases := []struct {
 		name    string
-		pair    model.TradingPair
+		pair    model.QuotesPair
 		level   int
 		wantErr bool
 	}{
 		{
 			name: "BTC-USD Level 1",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDSymbol,
 				Category: trade.SPOT,
@@ -228,7 +228,7 @@ func TestCoinbaseSingleClient_GetOrderBook(t *testing.T) {
 		},
 		{
 			name: "ETH-USD Level 2",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.ETHSymbol,
 				Quote:    currency.USDSymbol,
 				Category: trade.SPOT,
@@ -238,7 +238,7 @@ func TestCoinbaseSingleClient_GetOrderBook(t *testing.T) {
 		},
 		{
 			name: "BTC-USDT Level 2",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.SPOT,
@@ -329,7 +329,7 @@ func TestCoinbaseStreamClient_Subscribe(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create stream client: %v", err)
 	}
-	pair := model.TradingPair{
+	pair := model.QuotesPair{
 		Base:     currency.BTCSymbol,
 		Quote:    currency.USDSymbol,
 		Category: trade.SPOT,
@@ -380,7 +380,7 @@ func TestCoinbaseStreamClient_ReceiveData(t *testing.T) {
 		t.Fatalf("failed to create stream client: %v", err)
 	}
 
-	pair := model.TradingPair{
+	pair := model.QuotesPair{
 		Base:     currency.BTCSymbol,
 		Quote:    currency.USDSymbol,
 		Category: trade.SPOT,
@@ -437,7 +437,7 @@ func TestCoinbaseStreamClient_MultipleChannels(t *testing.T) {
 		t.Fatalf("failed to create stream client: %v", err)
 	}
 
-	pair := model.TradingPair{
+	pair := model.QuotesPair{
 		Base:     currency.BTCSymbol,
 		Quote:    currency.USDSymbol,
 		Category: trade.SPOT,

@@ -27,7 +27,7 @@ type PriceTick interface {
 	PricePoint | PriceInterval | OrderBook
 }
 
-type TradingPair struct {
+type QuotesPair struct {
 	ExchangeID ExchangeId
 	Base       currency.CurrencySymbol
 	Quote      currency.CurrencySymbol
@@ -36,7 +36,7 @@ type TradingPair struct {
 	MinTick    decimal.Decimal
 }
 
-func (tp TradingPair) Symbol() string {
+func (tp QuotesPair) Symbol() string {
 	return fmt.Sprintf("%s/%s", tp.Base, tp.Quote)
 }
 

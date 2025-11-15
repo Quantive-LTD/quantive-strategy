@@ -27,6 +27,10 @@ type StrategyStat struct {
 	PriceThreshold decimal.Decimal
 }
 
+type StrategyResult interface {
+	StrategyHybridResult | StrategyGeneralResult
+}
+
 type StrategyGeneralResult struct {
 	StrategyName  string
 	StrategyType  model.StrategyType
