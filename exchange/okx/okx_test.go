@@ -14,7 +14,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the LICENSE files for more details.
 
-package binance
+package okx
 
 import (
 	"context"
@@ -26,11 +26,11 @@ import (
 	"github.com/wang900115/quant/model/trade"
 )
 
-// TestBinanceSingleClient_GetPrice tests fetching current price from Binance
-func TestBinanceSingleClient_GetPrice(t *testing.T) {
-	cfg := BinanceConfig{
-		IstestNet: false,
-		Timeout:   10 * time.Second,
+// TestOkxSingleClient_GetPrice tests fetching current price from OKX
+func TestOkxSingleClient_GetPrice(t *testing.T) {
+	cfg := OkxConfig{
+		IsTestNet:     false,
+		PublicTimeout: 10 * time.Second,
 	}
 	client := NewSingleClient(cfg)
 
@@ -100,11 +100,11 @@ func TestBinanceSingleClient_GetPrice(t *testing.T) {
 	}
 }
 
-// TestBinanceSingleClient_GetKlines tests fetching kline data
-func TestBinanceSingleClient_GetKlines(t *testing.T) {
-	cfg := BinanceConfig{
-		IstestNet: false,
-		Timeout:   10 * time.Second,
+// TestOkxSingleClient_GetKlines tests fetching kline data
+func TestOkxSingleClient_GetKlines(t *testing.T) {
+	cfg := OkxConfig{
+		IsTestNet:     false,
+		PublicTimeout: 10 * time.Second,
 	}
 	client := NewSingleClient(cfg)
 
@@ -116,13 +116,13 @@ func TestBinanceSingleClient_GetKlines(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name: "SPOT 1h BTC-USDT",
+			name: "SPOT 1H BTC-USDT",
 			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.SPOT,
 			},
-			interval: "1h",
+			interval: "1H",
 			limit:    10,
 			wantErr:  false,
 		},
@@ -138,13 +138,13 @@ func TestBinanceSingleClient_GetKlines(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "SPOT 1d BTC-USDT",
+			name: "SPOT 1D BTC-USDT",
 			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.SPOT,
 			},
-			interval: "1d",
+			interval: "1D",
 			limit:    7,
 			wantErr:  false,
 		},
@@ -194,11 +194,11 @@ func TestBinanceSingleClient_GetKlines(t *testing.T) {
 	}
 }
 
-// TestBinanceSingleClient_GetOrderBook tests fetching order book data
-func TestBinanceSingleClient_GetOrderBook(t *testing.T) {
-	cfg := BinanceConfig{
-		IstestNet: false,
-		Timeout:   10 * time.Second,
+// TestOkxSingleClient_GetOrderBook tests fetching order book data
+func TestOkxSingleClient_GetOrderBook(t *testing.T) {
+	cfg := OkxConfig{
+		IsTestNet:     false,
+		PublicTimeout: 10 * time.Second,
 	}
 	client := NewSingleClient(cfg)
 
@@ -276,10 +276,10 @@ func TestBinanceSingleClient_GetOrderBook(t *testing.T) {
 	}
 }
 
-// TestBinanceStreamClient_Connection tests WebSocket connection
-func TestBinanceStreamClient_Connection(t *testing.T) {
-	cfg := BinanceConfig{
-		IstestNet:  false,
+// TestOkxStreamClient_Connection tests WebSocket connection
+func TestOkxStreamClient_Connection(t *testing.T) {
+	cfg := OkxConfig{
+		IsTestNet:  false,
 		BufferSize: 100,
 		Callback: func(message []byte) error {
 			t.Logf("Received message: %s", string(message))
@@ -292,23 +292,18 @@ func TestBinanceStreamClient_Connection(t *testing.T) {
 		t.Fatalf("failed to create stream client: %v", err)
 	}
 	defer client.Close()
-	if client.spotClient == nil {
-		t.Error("spot client is nil")
-	}
-	if client.futuresClient == nil {
-		t.Error("futures client is nil")
-	}
-	if client.inverseClient == nil {
-		t.Error("inverse client is nil")
+
+	if client.client == nil {
+		t.Error("websocket client is nil")
 	}
 
-	t.Log("Successfully connected to all Binance WebSocket endpoints")
+	t.Log("Successfully connected to OKX WebSocket endpoint")
 }
 
-// TestBinanceStreamClient_Subscribe tests subscribing to streams
-func TestBinanceStreamClient_Subscribe(t *testing.T) {
-	cfg := BinanceConfig{
-		IstestNet:  false,
+// TestOkxStreamClient_Subscribe tests subscribing to streams
+func TestOkxStreamClient_Subscribe(t *testing.T) {
+	cfg := OkxConfig{
+		IsTestNet:  false,
 		BufferSize: 100,
 	}
 
@@ -317,6 +312,7 @@ func TestBinanceStreamClient_Subscribe(t *testing.T) {
 		t.Fatalf("failed to create stream client: %v", err)
 	}
 	defer client.Close()
+
 	pair := model.QuotesPair{
 		Base:     currency.BTCSymbol,
 		Quote:    currency.USDTSymbol,
@@ -324,38 +320,38 @@ func TestBinanceStreamClient_Subscribe(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name        string
-		streamTypes []string
+		name     string
+		channels []string
 	}{
 		{
-			name:        "Ticker stream",
-			streamTypes: []string{"ticker"},
+			name:     "Ticker stream",
+			channels: []string{"tickers"},
 		},
 		{
-			name:        "Trade stream",
-			streamTypes: []string{"trade"},
+			name:     "Trade stream",
+			channels: []string{"trades"},
 		},
 		{
-			name:        "Multiple streams",
-			streamTypes: []string{"ticker", "trade", "depth"},
+			name:     "Multiple streams",
+			channels: []string{"tickers", "trades", "books5"},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := client.SubscribeStream(pair, tc.streamTypes)
+			err := client.SubscribeStream(pair, tc.channels)
 			if err != nil {
 				t.Fatalf("failed to subscribe: %v", err)
 			}
-			t.Logf("Successfully subscribed to %v", tc.streamTypes)
+			t.Logf("Successfully subscribed to %v", tc.channels)
 		})
 	}
 }
 
-// TestBinanceStreamClient_ReceiveData tests receiving stream data
-func TestBinanceStreamClient_ReceiveData(t *testing.T) {
-	cfg := BinanceConfig{
-		IstestNet:  false,
+// TestOkxStreamClient_ReceiveData tests receiving stream data
+func TestOkxStreamClient_ReceiveData(t *testing.T) {
+	cfg := OkxConfig{
+		IsTestNet:  false,
 		BufferSize: 100,
 	}
 	client, err := NewStreamClient(cfg)
@@ -370,7 +366,7 @@ func TestBinanceStreamClient_ReceiveData(t *testing.T) {
 		Category: trade.SPOT,
 	}
 
-	err = client.SubscribeStream(pair, []string{"ticker"})
+	err = client.SubscribeStream(pair, []string{"tickers"})
 	if err != nil {
 		t.Fatalf("failed to subscribe: %v", err)
 	}
@@ -401,10 +397,10 @@ func TestBinanceStreamClient_ReceiveData(t *testing.T) {
 	}
 }
 
-// TestBinanceStreamClient_MultipleCategories tests streaming from different categories
-func TestBinanceStreamClient_MultipleCategories(t *testing.T) {
-	cfg := BinanceConfig{
-		IstestNet:  false,
+// TestOkxStreamClient_MultipleCategories tests streaming from different categories
+func TestOkxStreamClient_MultipleCategories(t *testing.T) {
+	cfg := OkxConfig{
+		IsTestNet:  false,
 		BufferSize: 100,
 	}
 
@@ -412,6 +408,7 @@ func TestBinanceStreamClient_MultipleCategories(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create stream client: %v", err)
 	}
+	defer client.Close()
 
 	testCases := []struct {
 		name string
@@ -436,12 +433,51 @@ func TestBinanceStreamClient_MultipleCategories(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			err := client.SubscribeStream(tc.pair, []string{"ticker"})
-			if err != nil {
-				t.Fatalf("failed to subscribe to %s: %v", tc.name, err)
-			}
-			t.Logf("Successfully subscribed to %s category", tc.name)
-		})
+		err = client.SubscribeStream(tc.pair, []string{"tickers"})
+		if err != nil {
+			t.Fatalf("failed to subscribe: %v", err)
+		}
 	}
+
+	t.Log("Successfully subscribed to multiple categories")
+}
+
+// TestOkxConfig_DefaultValues tests default configuration values
+func TestOkxConfig_DefaultValues(t *testing.T) {
+	cfg := OkxConfig{}
+	client := NewSingleClient(cfg)
+
+	if client.httpClient.Timeout != defaultTimeout {
+		t.Errorf("expected timeout %v, got %v", defaultTimeout, client.httpClient.Timeout)
+	}
+
+	t.Logf("Default timeout: %v", client.httpClient.Timeout)
+}
+
+// TestOkxConfig_CustomValues tests custom configuration values
+func TestOkxConfig_CustomValues(t *testing.T) {
+	customTimeout := 5 * time.Second
+	customBufferSize := 50
+
+	cfg := OkxConfig{
+		PublicTimeout: customTimeout,
+		BufferSize:    customBufferSize,
+	}
+
+	client := NewSingleClient(cfg)
+	if client.httpClient.Timeout != customTimeout {
+		t.Errorf("expected timeout %v, got %v", customTimeout, client.httpClient.Timeout)
+	}
+
+	streamClient, err := NewStreamClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to create stream client: %v", err)
+	}
+	defer streamClient.Close()
+
+	if streamClient.bufferSize != customBufferSize {
+		t.Errorf("expected buffer size %d, got %d", customBufferSize, streamClient.bufferSize)
+	}
+
+	t.Logf("Custom timeout: %v, buffer size: %d", client.httpClient.Timeout, streamClient.bufferSize)
 }

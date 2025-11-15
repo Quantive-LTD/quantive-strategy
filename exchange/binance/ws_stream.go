@@ -31,8 +31,9 @@ type BinanceStreamClient struct {
 	futuresClient *websocket.Conn
 	inverseClient *websocket.Conn
 
-	handler           func(message []byte) error
-	bufferSize        int
+	handler    func(message []byte) error
+	bufferSize int
+
 	newPriceChan      chan model.PricePoint
 	priceIntervalChan chan model.PriceInterval
 	orderBookChan     chan model.OrderBook

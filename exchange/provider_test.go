@@ -14,18 +14,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the LICENSE files for more details.
 
-package provider
+package exchange
 
 import (
 	"context"
 	"testing"
 
+	"github.com/wang900115/quant/exchange/binance"
+	"github.com/wang900115/quant/exchange/coinbase"
+	"github.com/wang900115/quant/exchange/okx"
 	"github.com/wang900115/quant/model"
 	"github.com/wang900115/quant/model/currency"
 	"github.com/wang900115/quant/model/trade"
-	"github.com/wang900115/quant/provider/binance"
-	"github.com/wang900115/quant/provider/coinbase"
-	"github.com/wang900115/quant/provider/okx"
 )
 
 func TestProvider_GetPrice(t *testing.T) {

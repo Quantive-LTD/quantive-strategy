@@ -23,25 +23,3 @@ const (
 func (sc StrategyCategory) String() string {
 	return string(sc)
 }
-
-type StrategySide string
-
-const (
-	LONG  StrategySide = "long"
-	SHORT StrategySide = "short"
-)
-
-func (ss StrategySide) String() string {
-	return string(ss)
-}
-
-type StrategySignal string
-
-const (
-	BUY  StrategySignal = "buy"
-	SELL StrategySignal = "sell"
-)
-
-func (ss StrategySignal) String() string {
-	return string(ss)
-}

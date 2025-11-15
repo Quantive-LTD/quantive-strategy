@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/wang900115/quant/exchange"
+	"github.com/wang900115/quant/exchange/coinbase"
 	"github.com/wang900115/quant/model"
 	"github.com/wang900115/quant/model/currency"
 	"github.com/wang900115/quant/model/trade"
-	"github.com/wang900115/quant/provider"
-	"github.com/wang900115/quant/provider/coinbase"
 	"github.com/wang900115/quant/stoploss/engine"
 	"github.com/wang900115/quant/stoploss/strategy"
 )
@@ -31,7 +31,7 @@ func CombineExample() {
 	}
 
 	// ============ Register Provider ============
-	providers := provider.New()
+	providers := exchange.New()
 	providers.Register(model.COINBASE, coinbase.New(coinbase.CoinbaseConfig{}))
 
 	// ============ Initial Price ============

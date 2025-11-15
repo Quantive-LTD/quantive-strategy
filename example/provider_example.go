@@ -17,22 +17,22 @@ import (
 	"context"
 	"log"
 
+	"github.com/wang900115/quant/exchange"
+	"github.com/wang900115/quant/exchange/binance"
+	"github.com/wang900115/quant/exchange/coinbase"
+	"github.com/wang900115/quant/exchange/okx"
 	"github.com/wang900115/quant/model"
 	"github.com/wang900115/quant/model/currency"
 	"github.com/wang900115/quant/model/trade"
-	"github.com/wang900115/quant/provider"
-	"github.com/wang900115/quant/provider/binance"
-	"github.com/wang900115/quant/provider/coinbase"
-	"github.com/wang900115/quant/provider/okx"
 )
 
-func ProviderExample1() {
-	ps := provider.New()
+func exchangeExample1() {
+	ps := exchange.New()
 	ps.Register(model.BINANCE, binance.New(binance.BinanceConfig{}))
 	ps.Register(model.COINBASE, coinbase.New(coinbase.CoinbaseConfig{}))
 	ps.Register(model.OKX, okx.New(okx.OkxConfig{}))
 
-	log.Printf("Providers registered: %+v \n", ps.ListProviders())
+	log.Printf("exchanges registered: %+v \n", ps.ListProviders())
 
 	QuotesPair := model.QuotesPair{
 		ExchangeID: model.BINANCE,
@@ -65,12 +65,12 @@ func ProviderExample1() {
 	log.Printf("Order book for %s: %+v \n", QuotesPair.Symbol(), orderBook)
 }
 
-func ProviderExample2() {
-	ps := provider.New()
+func exchangeExample2() {
+	ps := exchange.New()
 	ps.Register(model.BINANCE, binance.New(binance.BinanceConfig{}))
 	ps.Register(model.COINBASE, coinbase.New(coinbase.CoinbaseConfig{}))
 	ps.Register(model.OKX, okx.New(okx.OkxConfig{}))
-	log.Printf("Providers registered: %+v \n", ps.ListProviders())
+	log.Printf("exchanges registered: %+v \n", ps.ListProviders())
 	QuotesPair := model.QuotesPair{
 		ExchangeID: model.COINBASE,
 		Base:       currency.BTCSymbol,

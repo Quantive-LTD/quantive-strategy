@@ -16,10 +16,9 @@ package engine
 import (
 	"context"
 	"log"
-	"runtime/debug"
-	"sync"
 	"time"
 
+	"github.com/wang900115/quant/common/sys"
 	"github.com/wang900115/quant/model"
 	"github.com/wang900115/quant/model/result"
 	"github.com/wang900115/quant/stoploss"
@@ -64,7 +63,7 @@ func DefaultConfig() Config {
 }
 
 type StrategyEngine struct {
-	engine    *Engine
+	engine    *sys.Engine
 	portfolio *Portfolio
 	execution *Execution
 	Reporter  *Report
@@ -74,7 +73,7 @@ type StrategyEngine struct {
 
 func New(config Config) *StrategyEngine {
 	return &StrategyEngine{
-		engine:    NewEngine(config.RetryInterval, config.CheckInterval),
+		engine:    sys.NewEngine(config.RetryInterval, config.CheckInterval),
 		portfolio: NewPortfolio(),
 		execution: NewExecutionManager(config.BufferSize, config.BufferRSize),
 		Reporter:  NewReport(config.ReportCallback),
@@ -472,90 +471,6 @@ func (csm *StrategyEngine) Collect(pricePoint model.PricePoint, callback func())
 func (csm *StrategyEngine) Stop() {
 	csm.engine.Stop()
 	csm.execution.closeChannels()
-}
-
-type Engine struct {
-	ctx           context.Context
-	cancel        context.CancelFunc
-	wg            sync.WaitGroup
-	HealthCheck   time.Duration
-	RetryInterval time.Duration
-}
-
-func NewEngine(retry time.Duration, health time.Duration) *Engine {
-	ctx, cancel := context.WithCancel(context.Background())
-	return &Engine{
-		ctx:           ctx,
-		cancel:        cancel,
-		RetryInterval: retry,
-		HealthCheck:   health,
-	}
-}
-
-func (e *Engine) Go(fn func(ctx context.Context), recoverFunc func(r any)) {
-	e.wg.Add(1)
-	go func() {
-		defer e.wg.Done()
-
-		defer func() {
-			if r := recover(); r != nil {
-				if recoverFunc != nil {
-					recoverFunc(r)
-				} else {
-					log.Printf("Recovered from panic in engine goroutine: %v", r)
-				}
-			}
-		}()
-		fn(e.ctx)
-	}()
-}
-
-func (e *Engine) SafeGo(fn func(ctx context.Context), restartFunc func()) {
-	e.wg.Add(1)
-	go func() {
-		defer e.wg.Done()
-
-		for {
-			done := make(chan struct{})
-			panicCh := make(chan any, 1)
-
-			go func() {
-				defer func() {
-					if r := recover(); r != nil {
-						select {
-						case panicCh <- r:
-						default:
-						}
-					}
-				}()
-				fn(e.ctx)
-				close(done)
-			}()
-
-			select {
-			case <-done:
-				return
-			case r := <-panicCh:
-				log.Printf("[Engine.SafeGo] goroutine panic recovered: %v\n%s", r, debug.Stack())
-				if restartFunc != nil {
-					restartFunc()
-				}
-			case <-e.ctx.Done():
-				return
-			}
-
-			select {
-			case <-e.ctx.Done():
-				return
-			case <-time.After(e.RetryInterval):
-			}
-		}
-	}()
-}
-
-func (e *Engine) Stop() {
-	e.cancel()
-	e.wg.Wait()
 }
 
 func dataFeedWithMetrics(pricePoint model.PricePoint, channel chan model.PricePoint, typ model.StrategyType, category model.StrategyCategory, metrics *Metrics, callback func()) {

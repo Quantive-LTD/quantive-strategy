@@ -29,6 +29,7 @@ import (
 const (
 	spotEndpoint       = "https://api.exchange.coinbase.com"
 	spotWsEndpoint     = "wss://ws-feed.exchange.coinbase.com"
+	spotWsPEndpoint    = "wss://advanced-trade-ws.coinbase.com"
 	testSpotEndpoint   = "https://api-public.sandbox.exchange.coinbase.com"
 	testSpotWsEndpoint = "wss://ws-feed-public.sandbox.exchange.coinbase.com"
 )
@@ -47,6 +48,7 @@ var (
 	errResponseFailed = errors.New("coinbase: response failed")
 	errNotValidType   = errors.New("coinbase: not valid type")
 	errInitFailed     = errors.New("coinbase: initialization failed")
+	errNonAssetFound  = errors.New("coinbase: no such asset found")
 )
 
 type CoinbaseSingleClient struct {
@@ -54,7 +56,7 @@ type CoinbaseSingleClient struct {
 }
 
 func NewSingleClient(cfg CoinbaseConfig) *CoinbaseSingleClient {
-	timeout := cfg.Timeout
+	timeout := cfg.PublicTimeout
 	if timeout == 0 {
 		timeout = defaultTimeout
 	}
@@ -234,15 +236,24 @@ func (cc *CoinbaseSingleClient) GetOrderBook(ctx context.Context, pair model.Quo
 }
 
 type CoinbaseConfig struct {
-	IstestNet  bool
-	Timeout    time.Duration
-	BufferSize int
-	Callback   func(message []byte) error
+	IstestNet      bool
+	PublicTimeout  time.Duration
+	PrivateTimeout time.Duration
+	BufferSize     int
+	Callback       func(message []byte) error
+
+	APIKey     string
+	SecretKey  string
+	Passphrase string
+
+	RetryInterval       time.Duration
+	HealthCheckInterval time.Duration
 }
 
 type CoinbaseClient struct {
 	*CoinbaseSingleClient
 	*CoinbaseStreamClient
+	*CoinbaseTradeClient
 }
 
 func New(config CoinbaseConfig) *CoinbaseClient {
@@ -250,9 +261,14 @@ func New(config CoinbaseConfig) *CoinbaseClient {
 	if err != nil {
 		panic(err)
 	}
+	tradeClient, err := NewTradeClient(config)
+	if err != nil {
+		panic(err)
+	}
 	return &CoinbaseClient{
 		CoinbaseSingleClient: NewSingleClient(config),
 		CoinbaseStreamClient: streamClient,
+		CoinbaseTradeClient:  tradeClient,
 	}
 }
 
