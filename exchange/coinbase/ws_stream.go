@@ -24,9 +24,11 @@ import (
 )
 
 type CoinbaseStreamClient struct {
-	client            *websocket.Conn
-	handler           func(message []byte) error
-	bufferSize        int
+	client *websocket.Conn
+
+	handler    func(message []byte) error
+	bufferSize int
+
 	newPriceChan      chan model.PricePoint
 	priceIntervalChan chan model.PriceInterval
 	orderBookChan     chan model.OrderBook

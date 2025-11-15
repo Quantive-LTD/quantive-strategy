@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the LICENSE files for more details.
 
-package provider
+package exchange
 
 import (
 	"context"
@@ -32,6 +32,10 @@ type Provider interface {
 	SubscribeStream(pair model.QuotesPair, channel []string) error
 	Dispatch(ctx context.Context) error
 	ReceiveStream() (<-chan model.PricePoint, <-chan model.PriceInterval, <-chan model.OrderBook)
+	PlaceOrder(ctx context.Context, req model.OrderRequest) (*model.OrderResult, error)
+	GetOrder(ctx context.Context, symbol string, orderID string) (*model.OrderDetail, error)
+	CancelOrder(ctx context.Context, symbol string, orderID string) error
+	GetAssetBalance(ctx context.Context, asset string) (*model.AssetBalance, error)
 	Close() error
 }
 

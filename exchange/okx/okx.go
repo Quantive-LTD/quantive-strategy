@@ -51,6 +51,7 @@ var (
 	errResponseFailed = errors.New("okx: response failed")
 	errNotValidType   = errors.New("okx: not valid type")
 	errInitFailed     = errors.New("okx: initialization failed")
+	errNonAssetFound  = errors.New("okx: no such asset found")
 )
 
 type OkxSingleClient struct {
@@ -58,7 +59,7 @@ type OkxSingleClient struct {
 }
 
 func NewSingleClient(cfg OkxConfig) *OkxSingleClient {
-	timeout := cfg.Timeout
+	timeout := cfg.PublicTimeout
 	if timeout == 0 {
 		timeout = defaultTimeout
 	}
@@ -243,15 +244,23 @@ func (oc *OkxSingleClient) GetOrderBook(ctx context.Context, pair model.QuotesPa
 }
 
 type OkxConfig struct {
-	IsTestNet  bool
-	Timeout    time.Duration
-	BufferSize int
-	Callback   func(message []byte) error
+	IsTestNet      bool
+	PublicTimeout  time.Duration
+	PrivateTimeout time.Duration
+	BufferSize     int
+	Callback       func(message []byte) error
+	APIKey         string
+	SecretKey      string
+	Passphrase     string
+
+	RetryInterval       time.Duration
+	HealthCheckInterval time.Duration
 }
 
 type OkxClient struct {
 	*OkxSingleClient
 	*OkxStreamClient
+	*OkxTradeClient
 }
 
 func New(config OkxConfig) *OkxClient {

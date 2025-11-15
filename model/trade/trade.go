@@ -13,14 +13,6 @@
 
 package trade
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-	"github.com/shopspring/decimal"
-	"github.com/wang900115/quant/model/currency"
-)
-
 type Category string
 
 const (
@@ -29,51 +21,38 @@ const (
 	INVERSE Category = "INVERSE"
 )
 
-type TradeInfo struct {
-	// unique trade identifier of trading system
-	ID uuid.UUID
-	// trading pair involved in the trade
-	Base  currency.Currency
-	Quote currency.Currency
+func (c Category) String() string {
+	return string(c)
 }
 
-// TradeOpen represents the opening details of a trade
-type TradeOpen struct {
-	//reference to TradeInfo.ID
-	TradeID uuid.UUID
-	// reference quote price to base currency's price
-	EntryPrice decimal.Decimal
-	// quantity in base currency
-	Quantity decimal.Decimal
-	// total cost in quote currency
-	TotalCost decimal.Decimal
-	CreatedAt time.Time
-}
+type Signal string
 
-// TradeClose represents the closing details of a trade
-type TradeClose struct {
-	// reference to TradeInfo.ID
-	TradeID uuid.UUID
-	// quote price to base currency's price
-	WithdrawalPrice decimal.Decimal
-	// quantity in base currency
-	Quantity decimal.Decimal
-	// total payout in quote currency
-	TotalPayout decimal.Decimal
-	CreatedAt   time.Time
-}
+const (
+	BUY  Signal = "BUY"
+	SELL Signal = "SELL"
+)
 
-// TradeReport summarizes the result of a completed trade
-type TradeReport struct {
-	// reference to TradeInfo.ID
-	TradeID uuid.UUID
-	// profit or loss in quote currency
-	ProfitLoss decimal.Decimal
-	// percentage return on the trade in base currency
-	ReturnBasePct decimal.Decimal
-	// percentage return on the trade in quote currency
-	ReturnQuotePct decimal.Decimal
-	// duration of the trade
-	Duration  time.Duration
-	CreatedAt time.Time
-}
+type Type string
+
+const (
+	LIMIT  Type = "LIMIT"
+	MARKET Type = "MARKET"
+)
+
+type Status string
+
+const (
+	NEW              Status = "NEW"
+	FILLED           Status = "FILLED"
+	CANCELED         Status = "CANCELED"
+	PARTIALLY_FILLED Status = "PARTIALLY_FILLED"
+	UNKNOWN          Status = "UNKNOWN"
+)
+
+type TimeInForce string
+
+const (
+	GTC TimeInForce = "GTC" // Good Till Cancelled
+	IOC TimeInForce = "IOC" // Immediate Or Cancel
+	FOK TimeInForce = "FOK" // Fill Or Kill
+)

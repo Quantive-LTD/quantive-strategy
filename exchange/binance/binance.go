@@ -43,8 +43,9 @@ var defaultCallback = func(message []byte) error {
 }
 
 const (
-	defaultTimeout    = 10 * time.Second
-	defaultBufferSize = 100
+	defaultTimeout      = 10 * time.Second
+	defaultBufferSize   = 100
+	defaultTradeTimeout = 15 * time.Second
 )
 
 var (
@@ -52,13 +53,21 @@ var (
 	errResponseFailed = errors.New("binance: response failed")
 	errInvalidPair    = errors.New("binance: invalid trading pair")
 	errInitFailed     = errors.New("binance: initialization failed")
+	errNonAssetFound  = errors.New("binance: no such asset found")
 )
 
 type BinanceConfig struct {
-	IstestNet  bool
-	Timeout    time.Duration
-	BufferSize int
-	Callback   func(message []byte) error
+	IstestNet      bool
+	PublicTimeout  time.Duration
+	PrivateTimeout time.Duration
+	BufferSize     int
+	Callback       func(message []byte) error
+
+	APIKey    string
+	SecretKey string
+
+	RetryInterval       time.Duration
+	HealthCheckInterval time.Duration
 }
 
 type BinanceSingleClient struct {
@@ -66,7 +75,7 @@ type BinanceSingleClient struct {
 }
 
 func NewSingleClient(cfg BinanceConfig) *BinanceSingleClient {
-	timeout := cfg.Timeout
+	timeout := cfg.PublicTimeout
 	if timeout == 0 {
 		timeout = defaultTimeout
 	}
@@ -224,6 +233,7 @@ func (bc *BinanceSingleClient) GetOrderBook(ctx context.Context, pair model.Quot
 type BinanceClient struct {
 	*BinanceSingleClient
 	*BinanceStreamClient
+	*BinanceTradeClient
 }
 
 func New(cfg BinanceConfig) *BinanceClient {
@@ -231,9 +241,14 @@ func New(cfg BinanceConfig) *BinanceClient {
 	if err != nil {
 		panic(err)
 	}
+	binanceTradeClient, err := NewTradeClient(cfg)
+	if err != nil {
+		panic(err)
+	}
 	return &BinanceClient{
 		BinanceSingleClient: NewSingleClient(cfg),
 		BinanceStreamClient: binanceStreamClient,
+		BinanceTradeClient:  binanceTradeClient,
 	}
 }
 

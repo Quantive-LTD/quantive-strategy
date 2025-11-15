@@ -29,8 +29,8 @@ import (
 // TestCoinbaseSingleClient_GetPrice tests fetching current price from Coinbase
 func TestCoinbaseSingleClient_GetPrice(t *testing.T) {
 	cfg := CoinbaseConfig{
-		IstestNet: false,
-		Timeout:   10 * time.Second,
+		IstestNet:     false,
+		PublicTimeout: 10 * time.Second,
 	}
 	client := NewSingleClient(cfg)
 
@@ -111,8 +111,8 @@ func TestCoinbaseSingleClient_GetPrice(t *testing.T) {
 // TestCoinbaseSingleClient_GetKlines tests fetching kline data
 func TestCoinbaseSingleClient_GetKlines(t *testing.T) {
 	cfg := CoinbaseConfig{
-		IstestNet: false,
-		Timeout:   10 * time.Second,
+		IstestNet:     false,
+		PublicTimeout: 10 * time.Second,
 	}
 	client := NewSingleClient(cfg)
 
@@ -205,8 +205,8 @@ func TestCoinbaseSingleClient_GetKlines(t *testing.T) {
 // TestCoinbaseSingleClient_GetOrderBook tests fetching order book data
 func TestCoinbaseSingleClient_GetOrderBook(t *testing.T) {
 	cfg := CoinbaseConfig{
-		IstestNet: false,
-		Timeout:   10 * time.Second,
+		IstestNet:     false,
+		PublicTimeout: 10 * time.Second,
 	}
 	client := NewSingleClient(cfg)
 
@@ -514,9 +514,9 @@ func TestCoinbaseConfig_CustomValues(t *testing.T) {
 	customBufferSize := 50
 
 	cfg := CoinbaseConfig{
-		IstestNet:  false,
-		Timeout:    customTimeout,
-		BufferSize: customBufferSize,
+		IstestNet:     false,
+		PublicTimeout: customTimeout,
+		BufferSize:    customBufferSize,
 	}
 
 	client := NewSingleClient(cfg)
