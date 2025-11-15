@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -40,7 +39,6 @@ const (
 )
 
 var defaultCallback = func(message []byte) error {
-	log.Println(string(message))
 	return nil
 }
 
@@ -77,7 +75,7 @@ func NewSingleClient(cfg BinanceConfig) *BinanceSingleClient {
 	}
 }
 
-func (bc *BinanceSingleClient) GetPrice(ctx context.Context, pair model.TradingPair) (*model.PricePoint, error) {
+func (bc *BinanceSingleClient) GetPrice(ctx context.Context, pair model.QuotesPair) (*model.PricePoint, error) {
 	url, err := decideRoute(pair)
 	if err != nil {
 		return nil, err
@@ -115,7 +113,7 @@ func (bc *BinanceSingleClient) GetPrice(ctx context.Context, pair model.TradingP
 	return data, nil
 }
 
-func (bc *BinanceSingleClient) GetKlines(ctx context.Context, pair model.TradingPair, interval string, limit int) ([]model.PriceInterval, error) {
+func (bc *BinanceSingleClient) GetKlines(ctx context.Context, pair model.QuotesPair, interval string, limit int) ([]model.PriceInterval, error) {
 	url, err := decideRouteKlines(pair, interval, limit)
 	if err != nil {
 		return nil, err
@@ -181,7 +179,7 @@ func (bc *BinanceSingleClient) GetKlines(ctx context.Context, pair model.Trading
 	return intervals, nil
 }
 
-func (bc *BinanceSingleClient) GetOrderBook(ctx context.Context, pair model.TradingPair, limit int) (*model.OrderBook, error) {
+func (bc *BinanceSingleClient) GetOrderBook(ctx context.Context, pair model.QuotesPair, limit int) (*model.OrderBook, error) {
 	url, err := decideOrderBookRoute(pair, limit)
 	if err != nil {
 		return nil, err
@@ -239,7 +237,7 @@ func New(cfg BinanceConfig) *BinanceClient {
 	}
 }
 
-func decideRoute(pair model.TradingPair) (string, error) {
+func decideRoute(pair model.QuotesPair) (string, error) {
 	symbol := fmt.Sprintf("%s%s", pair.Base, pair.Quote)
 	switch pair.Category {
 	case trade.SPOT:
@@ -254,7 +252,7 @@ func decideRoute(pair model.TradingPair) (string, error) {
 	}
 }
 
-func decideRouteKlines(pair model.TradingPair, interval string, limit int) (string, error) {
+func decideRouteKlines(pair model.QuotesPair, interval string, limit int) (string, error) {
 	symbol := fmt.Sprintf("%s%s", pair.Base, pair.Quote)
 	switch pair.Category {
 	case trade.SPOT:
@@ -269,7 +267,7 @@ func decideRouteKlines(pair model.TradingPair, interval string, limit int) (stri
 	}
 }
 
-func decideOrderBookRoute(pair model.TradingPair, limit int) (string, error) {
+func decideOrderBookRoute(pair model.QuotesPair, limit int) (string, error) {
 	symbol := fmt.Sprintf("%s%s", pair.Base, pair.Quote)
 	switch pair.Category {
 	case trade.SPOT:

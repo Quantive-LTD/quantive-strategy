@@ -34,35 +34,35 @@ func ProviderExample1() {
 
 	log.Printf("Providers registered: %+v \n", ps.ListProviders())
 
-	tradingPair := model.TradingPair{
+	QuotesPair := model.QuotesPair{
 		ExchangeID: model.BINANCE,
 		Base:       currency.BTCSymbol,
 		Quote:      currency.USDTSymbol,
 		Category:   trade.SPOT,
 	}
-	pricePoint, err := ps.GetPrice(context.Background(), tradingPair)
+	pricePoint, err := ps.GetPrice(context.Background(), QuotesPair)
 	if err != nil {
 		log.Fatalf("Failed to get price: %v \n", err)
 	}
-	log.Printf("Price for %s: %+v", tradingPair.Symbol(), *pricePoint)
+	log.Printf("Price for %s: %+v", QuotesPair.Symbol(), *pricePoint)
 
-	pricePoint, err = ps.GetPrice(context.Background(), tradingPair)
+	pricePoint, err = ps.GetPrice(context.Background(), QuotesPair)
 	if err != nil {
 		log.Fatalf("Failed to get price: %v \n", err)
 	}
-	log.Printf("Price for %s: %+v \n", tradingPair.Symbol(), *pricePoint)
+	log.Printf("Price for %s: %+v \n", QuotesPair.Symbol(), *pricePoint)
 
-	klines, err := ps.GetKlines(context.Background(), tradingPair, "1h", 10)
+	klines, err := ps.GetKlines(context.Background(), QuotesPair, "1h", 10)
 	if err != nil {
 		log.Fatalf("Failed to get klines: %v \n", err)
 	}
-	log.Printf("Klines for %s: %+v \n", tradingPair.Symbol(), klines)
+	log.Printf("Klines for %s: %+v \n", QuotesPair.Symbol(), klines)
 
-	orderBook, err := ps.GetOrderBook(context.Background(), tradingPair, 5)
+	orderBook, err := ps.GetOrderBook(context.Background(), QuotesPair, 5)
 	if err != nil {
 		log.Fatalf("Failed to get order book: %v \n", err)
 	}
-	log.Printf("Order book for %s: %+v \n", tradingPair.Symbol(), orderBook)
+	log.Printf("Order book for %s: %+v \n", QuotesPair.Symbol(), orderBook)
 }
 
 func ProviderExample2() {
@@ -71,18 +71,18 @@ func ProviderExample2() {
 	ps.Register(model.COINBASE, coinbase.New(coinbase.CoinbaseConfig{}))
 	ps.Register(model.OKX, okx.New(okx.OkxConfig{}))
 	log.Printf("Providers registered: %+v \n", ps.ListProviders())
-	tradingPair := model.TradingPair{
+	QuotesPair := model.QuotesPair{
 		ExchangeID: model.COINBASE,
 		Base:       currency.BTCSymbol,
 		Quote:      currency.USDTSymbol,
 		Category:   trade.SPOT,
 	}
-	if err := ps.SubscribeStream(tradingPair, []string{"ticker", "order_book"}); err != nil {
+	if err := ps.SubscribeStream(QuotesPair, []string{"ticker", "order_book"}); err != nil {
 		log.Fatalf("Failed to subscribe to stream: %v \n", err)
 	}
 	ps.StartStream(context.Background())
 
-	ch1, ch2, ch3, err := ps.ReceiveStream(tradingPair)
+	ch1, ch2, ch3, err := ps.ReceiveStream(QuotesPair)
 	if err != nil {
 		log.Fatalf("Failed to receive stream: %v \n", err)
 	}

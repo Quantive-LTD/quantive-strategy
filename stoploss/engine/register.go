@@ -19,8 +19,6 @@ import (
 	"github.com/wang900115/quant/stoploss"
 )
 
-// ! todo copy low level
-
 type Portfolio struct {
 	mutex                     sync.Mutex
 	fixedStoplossStrategies   map[string]stoploss.FixedStopLoss

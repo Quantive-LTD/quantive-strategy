@@ -36,13 +36,13 @@ func TestBinanceSingleClient_GetPrice(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		pair     model.TradingPair
+		pair     model.QuotesPair
 		wantErr  bool
 		errCheck func(error) bool
 	}{
 		{
 			name: "SPOT BTC-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.SPOT,
@@ -51,7 +51,7 @@ func TestBinanceSingleClient_GetPrice(t *testing.T) {
 		},
 		{
 			name: "FUTURES BTC-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.FUTURES,
@@ -60,7 +60,7 @@ func TestBinanceSingleClient_GetPrice(t *testing.T) {
 		},
 		{
 			name: "SPOT ETH-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.ETHSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.SPOT,
@@ -110,14 +110,14 @@ func TestBinanceSingleClient_GetKlines(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		pair     model.TradingPair
+		pair     model.QuotesPair
 		interval string
 		limit    int
 		wantErr  bool
 	}{
 		{
 			name: "SPOT 1h BTC-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.SPOT,
@@ -128,7 +128,7 @@ func TestBinanceSingleClient_GetKlines(t *testing.T) {
 		},
 		{
 			name: "FUTURES 15m ETH-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.ETHSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.FUTURES,
@@ -139,7 +139,7 @@ func TestBinanceSingleClient_GetKlines(t *testing.T) {
 		},
 		{
 			name: "SPOT 1d BTC-USDT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.SPOT,
@@ -204,13 +204,13 @@ func TestBinanceSingleClient_GetOrderBook(t *testing.T) {
 
 	testCases := []struct {
 		name    string
-		pair    model.TradingPair
+		pair    model.QuotesPair
 		limit   int
 		wantErr bool
 	}{
 		{
 			name: "SPOT BTC-USDT depth 5",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.SPOT,
@@ -220,7 +220,7 @@ func TestBinanceSingleClient_GetOrderBook(t *testing.T) {
 		},
 		{
 			name: "FUTURES ETH-USDT depth 10",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.ETHSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.FUTURES,
@@ -317,7 +317,7 @@ func TestBinanceStreamClient_Subscribe(t *testing.T) {
 		t.Fatalf("failed to create stream client: %v", err)
 	}
 	defer client.Close()
-	pair := model.TradingPair{
+	pair := model.QuotesPair{
 		Base:     currency.BTCSymbol,
 		Quote:    currency.USDTSymbol,
 		Category: trade.SPOT,
@@ -364,7 +364,7 @@ func TestBinanceStreamClient_ReceiveData(t *testing.T) {
 	}
 	defer client.Close()
 
-	pair := model.TradingPair{
+	pair := model.QuotesPair{
 		Base:     currency.BTCSymbol,
 		Quote:    currency.USDTSymbol,
 		Category: trade.SPOT,
@@ -415,11 +415,11 @@ func TestBinanceStreamClient_MultipleCategories(t *testing.T) {
 
 	testCases := []struct {
 		name string
-		pair model.TradingPair
+		pair model.QuotesPair
 	}{
 		{
 			name: "SPOT",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.SPOT,
@@ -427,7 +427,7 @@ func TestBinanceStreamClient_MultipleCategories(t *testing.T) {
 		},
 		{
 			name: "FUTURES",
-			pair: model.TradingPair{
+			pair: model.QuotesPair{
 				Base:     currency.BTCSymbol,
 				Quote:    currency.USDTSymbol,
 				Category: trade.FUTURES,

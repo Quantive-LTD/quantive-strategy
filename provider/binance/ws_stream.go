@@ -95,7 +95,7 @@ func (bc *BinanceStreamClient) ReceiveStream() (<-chan model.PricePoint, <-chan 
 	return bc.newPriceChan, bc.priceIntervalChan, bc.orderBookChan
 }
 
-func (bc *BinanceStreamClient) SubscribeStream(pair model.TradingPair, streamType []string) error {
+func (bc *BinanceStreamClient) SubscribeStream(pair model.QuotesPair, streamType []string) error {
 	client, err := bc.getClient(pair)
 	if err != nil {
 		return err
@@ -184,7 +184,7 @@ func (bc *BinanceStreamClient) getDispatchers() map[string]dispatchFunc {
 	}
 }
 
-func (bc *BinanceStreamClient) getClient(pair model.TradingPair) (*websocket.Conn, error) {
+func (bc *BinanceStreamClient) getClient(pair model.QuotesPair) (*websocket.Conn, error) {
 	switch pair.Category {
 	case trade.SPOT:
 		return bc.spotClient, nil

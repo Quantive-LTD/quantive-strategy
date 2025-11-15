@@ -23,7 +23,7 @@ func CombineExample() {
 	defer cancel()
 
 	// ============ Setup Trading Pair ============
-	tradingPair := model.TradingPair{
+	QuotesPair := model.QuotesPair{
 		ExchangeID: model.COINBASE,
 		Base:       currency.BTCSymbol,
 		Quote:      currency.USDTSymbol,
@@ -35,28 +35,24 @@ func CombineExample() {
 	providers.Register(model.COINBASE, coinbase.New(coinbase.CoinbaseConfig{}))
 
 	// ============ Initial Price ============
-	pricePoint, err := providers.GetPrice(ctx, tradingPair)
+	pricePoint, err := providers.GetPrice(ctx, QuotesPair)
 	if err != nil {
 		panic(err)
 	}
 
 	// ============ StopLoss Engine ============
-	manger := engine.New(engine.Config{
-		BufferSize:    100,
-		ReadTimeout:   time.Second * 5,
-		CheckInterval: time.Second * 3,
-	})
+	manger := engine.New(engine.DefaultConfig())
 
 	trailingStopStrategy, _ := strategy.NewFixedTrailingStop(
 		pricePoint.NewPrice,
-		decimal.NewFromFloat(0.3),
+		decimal.NewFromFloat(0.03),
 		nil,
 	)
 	manger.RegisterStrategy("Fixed-Trailing-Stop-3%", trailingStopStrategy)
 	manger.Start()
 
 	// ============ Stream Subscribe ============
-	err = providers.SubscribeStream(tradingPair, []string{"ticker"})
+	err = providers.SubscribeStream(QuotesPair, []string{"ticker"})
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +61,7 @@ func CombineExample() {
 	providers.StartStream(ctx)
 
 	// ============ Channels ============
-	ch1, ch2, ch3, err := providers.ReceiveStream(tradingPair)
+	ch1, ch2, ch3, err := providers.ReceiveStream(QuotesPair)
 	if err != nil {
 		panic(err)
 	}
@@ -99,9 +95,9 @@ func CombineExample() {
 	<-sigChan
 	log.Println("🛑 Received interrupt, shutting down...")
 
-	providers.CloseProvider(tradingPair.ExchangeID)
+	providers.CloseProvider(QuotesPair.ExchangeID)
 	manger.Stop()
 	cancel()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 }

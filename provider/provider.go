@@ -26,10 +26,10 @@ var (
 )
 
 type Provider interface {
-	GetPrice(ctx context.Context, pair model.TradingPair) (*model.PricePoint, error)
-	GetKlines(ctx context.Context, pair model.TradingPair, interval string, limit int) ([]model.PriceInterval, error)
-	GetOrderBook(ctx context.Context, pair model.TradingPair, limit int) (*model.OrderBook, error)
-	SubscribeStream(pair model.TradingPair, channel []string) error
+	GetPrice(ctx context.Context, pair model.QuotesPair) (*model.PricePoint, error)
+	GetKlines(ctx context.Context, pair model.QuotesPair, interval string, limit int) ([]model.PriceInterval, error)
+	GetOrderBook(ctx context.Context, pair model.QuotesPair, limit int) (*model.OrderBook, error)
+	SubscribeStream(pair model.QuotesPair, channel []string) error
 	Dispatch(ctx context.Context) error
 	ReceiveStream() (<-chan model.PricePoint, <-chan model.PriceInterval, <-chan model.OrderBook)
 	Close() error
@@ -58,7 +58,7 @@ func (p *Providers) Unregister(exchangeID model.ExchangeId) {
 	p.mu.Unlock()
 }
 
-func (p *Providers) GetPrice(ctx context.Context, pair model.TradingPair) (*model.PricePoint, error) {
+func (p *Providers) GetPrice(ctx context.Context, pair model.QuotesPair) (*model.PricePoint, error) {
 	p.mu.RLock()
 	provider, ok := p.registry[pair.ExchangeID]
 	p.mu.RUnlock()
@@ -68,7 +68,7 @@ func (p *Providers) GetPrice(ctx context.Context, pair model.TradingPair) (*mode
 	return provider.GetPrice(ctx, pair)
 }
 
-func (p *Providers) GetKlines(ctx context.Context, pair model.TradingPair, interval string, limit int) ([]model.PriceInterval, error) {
+func (p *Providers) GetKlines(ctx context.Context, pair model.QuotesPair, interval string, limit int) ([]model.PriceInterval, error) {
 	p.mu.RLock()
 	provider, ok := p.registry[pair.ExchangeID]
 	p.mu.RUnlock()
@@ -78,7 +78,7 @@ func (p *Providers) GetKlines(ctx context.Context, pair model.TradingPair, inter
 	return provider.GetKlines(ctx, pair, interval, limit)
 }
 
-func (p *Providers) GetOrderBook(ctx context.Context, pair model.TradingPair, limit int) (*model.OrderBook, error) {
+func (p *Providers) GetOrderBook(ctx context.Context, pair model.QuotesPair, limit int) (*model.OrderBook, error) {
 	p.mu.RLock()
 	provider, ok := p.registry[pair.ExchangeID]
 	p.mu.RUnlock()
@@ -88,7 +88,7 @@ func (p *Providers) GetOrderBook(ctx context.Context, pair model.TradingPair, li
 	return provider.GetOrderBook(ctx, pair, limit)
 }
 
-func (p *Providers) SubscribeStream(pair model.TradingPair, channel []string) error {
+func (p *Providers) SubscribeStream(pair model.QuotesPair, channel []string) error {
 	p.mu.RLock()
 	provider, ok := p.registry[pair.ExchangeID]
 	p.mu.RUnlock()
@@ -106,7 +106,7 @@ func (p *Providers) StartStream(ctx context.Context) {
 	}
 }
 
-func (p *Providers) ReceiveStream(pair model.TradingPair) (<-chan model.PricePoint, <-chan model.PriceInterval, <-chan model.OrderBook, error) {
+func (p *Providers) ReceiveStream(pair model.QuotesPair) (<-chan model.PricePoint, <-chan model.PriceInterval, <-chan model.OrderBook, error) {
 	p.mu.RLock()
 	provider, ok := p.registry[pair.ExchangeID]
 	p.mu.RUnlock()

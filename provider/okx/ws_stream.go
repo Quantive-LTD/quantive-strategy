@@ -83,7 +83,7 @@ func (oc *OkxStreamClient) ReceiveStream() (<-chan model.PricePoint, <-chan mode
 	return oc.newPriceChan, oc.priceIntervalChan, oc.orderBookChan
 }
 
-func (oc *OkxStreamClient) SubscribeStream(pair model.TradingPair, channels []string) error {
+func (oc *OkxStreamClient) SubscribeStream(pair model.QuotesPair, channels []string) error {
 	var args []map[string]interface{}
 
 	instId := getInstId(pair)

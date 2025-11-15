@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -39,7 +38,6 @@ const (
 )
 
 var defaultCallback = func(message []byte) error {
-	log.Println(string(message))
 	return nil
 }
 
@@ -69,7 +67,7 @@ func NewSingleClient(cfg OkxConfig) *OkxSingleClient {
 	}
 }
 
-func (oc *OkxSingleClient) GetPrice(ctx context.Context, pair model.TradingPair) (*model.PricePoint, error) {
+func (oc *OkxSingleClient) GetPrice(ctx context.Context, pair model.QuotesPair) (*model.PricePoint, error) {
 	instId := getInstId(pair)
 	url := fmt.Sprintf("%s/api/v5/market/ticker?instId=%s", endPoint, instId)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -108,7 +106,7 @@ func (oc *OkxSingleClient) GetPrice(ctx context.Context, pair model.TradingPair)
 }
 
 // interval: 1m, 3m, 5m, 15m, 30m, 1H, 2H, 4H, 6H, 12H, 1D, 1W, 1M, 3M
-func (oc *OkxSingleClient) GetKlines(ctx context.Context, pair model.TradingPair, interval string, limit int) ([]model.PriceInterval, error) {
+func (oc *OkxSingleClient) GetKlines(ctx context.Context, pair model.QuotesPair, interval string, limit int) ([]model.PriceInterval, error) {
 	instId := getInstId(pair)
 	url := fmt.Sprintf("%s/api/v5/market/candles?instId=%s&bar=%s&limit=%d",
 		endPoint, instId, interval, limit)
@@ -195,7 +193,7 @@ func (oc *OkxSingleClient) GetKlines(ctx context.Context, pair model.TradingPair
 	return intervals, nil
 }
 
-func (oc *OkxSingleClient) GetOrderBook(ctx context.Context, pair model.TradingPair, limit int) (*model.OrderBook, error) {
+func (oc *OkxSingleClient) GetOrderBook(ctx context.Context, pair model.QuotesPair, limit int) (*model.OrderBook, error) {
 	instId := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
 	url := fmt.Sprintf("%s/api/v5/market/books?instId=%s&sz=%d", endPoint, instId, limit)
 
@@ -267,7 +265,7 @@ func New(config OkxConfig) *OkxClient {
 	}
 }
 
-func getInstId(pair model.TradingPair) string {
+func getInstId(pair model.QuotesPair) string {
 	base := fmt.Sprintf("%s-%s", pair.Base, pair.Quote)
 	switch pair.Category {
 	case trade.SPOT:

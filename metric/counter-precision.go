@@ -33,24 +33,24 @@ func (c counterPrecisionSnapshot) Count() decimal.Decimal {
 }
 
 // counterPrecision is a thread-safe counter for decimal.Decimal values with specified precision.
-type counterPrecision struct {
+type CounterPrecision struct {
 	value atomic.Value // holds decimal.Decimal
 	prec  int32        // precision for decimal operations
 }
 
-// NewCounterPrecision creates and returns a new instance of counterPrecision with the specified precision.
+// NewCounterPrecision creates and returns a new instance of CounterPrecision with the specified precision.
 // If precision is 0, DefaultCounterPrecision is used.
-func NewCounterPrecision(precision int32) *counterPrecision {
+func NewCounterPrecision(precision int32) *CounterPrecision {
 	if precision == 0 {
 		precision = DefaultCounterPrecision
 	}
-	c := &counterPrecision{prec: precision}
+	c := &CounterPrecision{prec: precision}
 	c.value.Store(decimal.NewFromInt(0).Round(precision))
 	return c
 }
 
 // Inc increments the counter by the specified delta with decimal precision.
-func (c *counterPrecision) Inc(delta decimal.Decimal) {
+func (c *CounterPrecision) Inc(delta decimal.Decimal) {
 	for {
 		current := c.value.Load().(decimal.Decimal)
 		newValue := current.Add(delta).Round(c.prec)
@@ -61,7 +61,7 @@ func (c *counterPrecision) Inc(delta decimal.Decimal) {
 }
 
 // Dec decrements the counter by the specified delta with decimal precision.
-func (c *counterPrecision) Dec(delta decimal.Decimal) {
+func (c *CounterPrecision) Dec(delta decimal.Decimal) {
 	for {
 		current := c.value.Load().(decimal.Decimal)
 		newValue := current.Sub(delta).Round(c.prec)
@@ -72,18 +72,18 @@ func (c *counterPrecision) Dec(delta decimal.Decimal) {
 }
 
 // Clear resets the counter to zero with decimal precision.
-func (c *counterPrecision) Clear() {
+func (c *CounterPrecision) Clear() {
 	c.value.Store(decimal.NewFromInt(0).Round(c.prec))
 }
 
 // Fork creates a new counterPrecision instance but shares the same value.
-func (c *counterPrecision) Fork() *counterPrecision {
+func (c *CounterPrecision) Fork() *CounterPrecision {
 	forked := NewCounterPrecision(c.prec)
 	forked.Inc(c.value.Load().(decimal.Decimal))
 	return forked
 }
 
 // Snapshot returns a static snapshot of the current counter value with decimal precision.
-func (c *counterPrecision) Snapshot() counterPrecisionSnapshot {
+func (c *CounterPrecision) Snapshot() counterPrecisionSnapshot {
 	return counterPrecisionSnapshot(c.value.Load().(decimal.Decimal))
 }

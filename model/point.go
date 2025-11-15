@@ -27,7 +27,7 @@ type PriceTick interface {
 	PricePoint | PriceInterval | OrderBook
 }
 
-type TradingPair struct {
+type QuotesPair struct {
 	ExchangeID ExchangeId
 	Base       currency.CurrencySymbol
 	Quote      currency.CurrencySymbol
@@ -36,7 +36,7 @@ type TradingPair struct {
 	MinTick    decimal.Decimal
 }
 
-func (tp TradingPair) Symbol() string {
+func (tp QuotesPair) Symbol() string {
 	return fmt.Sprintf("%s/%s", tp.Base, tp.Quote)
 }
 
@@ -132,7 +132,10 @@ func ParseOrderEntries[T OrderBookEntry](entries [][]interface{}) ([]T, error) {
 func PushToChan[T PriceTick](ch chan T, data T) {
 	select {
 	case ch <- data:
+		// Successfully sent to channel
 	default:
-		// drop if channel is full
+		// Channel is full - data is dropped
+		// TODO: Consider adding metrics here to track dropped messages
+		// Example: metrics.IncrementDroppedMessages("price_point")
 	}
 }
