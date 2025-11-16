@@ -26,7 +26,6 @@ Quant integrates multiple external market data sources for real-time and histori
  – Spot, Futures, and Perpetual contracts.
 
 
-
 ## Architecture 
 ```kotlin
 ┌─────────────────────┐
@@ -52,7 +51,6 @@ The examples include:
 - Processing real-time price updates
 - Implementing custom callbacks
 - Complete working demos
-
 
 ## License
 
