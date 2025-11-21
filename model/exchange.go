@@ -19,7 +19,6 @@ const (
 	BINANCE ExchangeId = iota
 	COINBASE
 	OKX
-	BYBIT
 )
 
 type ExchangeName string
@@ -28,7 +27,6 @@ const (
 	BINANCE_NAME  ExchangeName = "Binance"
 	COINBASE_NAME ExchangeName = "Coinbase"
 	OKX_NAME      ExchangeName = "OKX"
-	BYBIT_NAME    ExchangeName = "Bybit"
 )
 
 type Exchange struct {
@@ -40,7 +38,6 @@ var ExchangeMap = map[ExchangeId]Exchange{
 	BINANCE:  {ID: BINANCE, Name: BINANCE_NAME},
 	COINBASE: {ID: COINBASE, Name: COINBASE_NAME},
 	OKX:      {ID: OKX, Name: OKX_NAME},
-	BYBIT:    {ID: BYBIT, Name: BYBIT_NAME},
 }
 
 func GetExchange(id ExchangeId) Exchange {

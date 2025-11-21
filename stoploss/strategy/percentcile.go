@@ -41,15 +41,15 @@ type FixedPercentProfit struct {
 	LastPrice    decimal.Decimal
 }
 
-// TimedPercentStop represents a timed stop loss strategy based on fixed percentage
-type TimedPercentStop struct {
+// DebouncedPercentStop represents a Debounced stop loss strategy based on fixed percentage
+type DebouncedPercentStop struct {
 	FixedPercentStop
 	TriggerTime   int64
 	TimeThreshold int64
 }
 
-// TimedPercentProfit represents a timed take profit strategy based on fixed percentage
-type TimedPercentProfit struct {
+// DebouncedPercentProfit represents a Debounced take profit strategy based on fixed percentage
+type DebouncedPercentProfit struct {
 	FixedPercentProfit
 	TriggerTime   int64
 	TimeThreshold int64
@@ -89,11 +89,11 @@ func NewFixedPercentProfit(entryPrice, takeProfitPct decimal.Decimal, callback s
 	return s, nil
 }
 
-func NewTimedPercentStop(entryPrice, stopLossPct decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.TimeBasedStopLoss, error) {
+func NewDebouncedPercentStop(entryPrice, stopLossPct decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.DebouncedStopLoss, error) {
 	if stopLossPct.IsNegative() || stopLossPct.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errStopLossRateInvalid
 	}
-	s := &TimedPercentStop{
+	s := &DebouncedPercentStop{
 		FixedPercentStop: FixedPercentStop{
 			LastPrice:    entryPrice,
 			threshold:    entryPrice.Mul(decimal.NewFromInt(1).Sub(stopLossPct)),
@@ -108,11 +108,11 @@ func NewTimedPercentStop(entryPrice, stopLossPct decimal.Decimal, timeThreshold 
 	return s, nil
 }
 
-func NewTimedPercentProfit(entryPrice, takeProfitPct decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.TimeBasedTakeProfit, error) {
+func NewDebouncedPercentProfit(entryPrice, takeProfitPct decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.DebouncedTakeProfit, error) {
 	if takeProfitPct.IsNegative() || takeProfitPct.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errTakeProfitRateInvalid
 	}
-	s := &TimedPercentProfit{
+	s := &DebouncedPercentProfit{
 		FixedPercentProfit: FixedPercentProfit{
 			LastPrice:    entryPrice,
 			threshold:    entryPrice.Mul(decimal.NewFromInt(1).Add(takeProfitPct)),
@@ -127,21 +127,21 @@ func NewTimedPercentProfit(entryPrice, takeProfitPct decimal.Decimal, timeThresh
 	return s, nil
 }
 
-func (t *TimedPercentStop) GetTimeThreshold() (int64, error) {
+func (t *DebouncedPercentStop) GetTimeThreshold() (int64, error) {
 	if !t.Active {
 		return 0, stoploss.ErrStatusInvalid
 	}
 	return t.TimeThreshold, nil
 }
 
-func (t *TimedPercentProfit) GetTimeThreshold() (int64, error) {
+func (t *DebouncedPercentProfit) GetTimeThreshold() (int64, error) {
 	if !t.Active {
 		return 0, stoploss.ErrStatusInvalid
 	}
 	return t.TimeThreshold, nil
 }
 
-func (t *TimedPercentStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
+func (t *DebouncedPercentStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
 	if !t.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -150,7 +150,7 @@ func (t *TimedPercentStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal, c
 			t.TriggerTime = currentTime
 		}
 		if currentTime-t.TriggerTime >= t.TimeThreshold {
-			err := t.Trigger(stoploss.TRIGGERED_REASON_TIMED_PERCENTCILE_STOPLOSS)
+			err := t.Trigger(stoploss.TRIGGERED_REASON_DEBOUNCED_PERCENTCILE_STOPLOSS)
 			if err != nil {
 				return true, stoploss.ErrCallBackFail
 			}
@@ -162,7 +162,7 @@ func (t *TimedPercentStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal, c
 	return false, nil
 }
 
-func (t *TimedPercentProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
+func (t *DebouncedPercentProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
 	if !t.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -171,7 +171,7 @@ func (t *TimedPercentProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decima
 			t.TriggerTime = currentTime
 		}
 		if currentTime-t.TriggerTime >= t.TimeThreshold {
-			err := t.Trigger(stoploss.TRIGGERED_REASON_TIMED_PERCENTCILE_TAKEPROFIT)
+			err := t.Trigger(stoploss.TRIGGERED_REASON_DEBOUNCED_PERCENTCILE_TAKEPROFIT)
 			if err != nil {
 				return true, stoploss.ErrCallBackFail
 			}
@@ -271,7 +271,7 @@ func (f *FixedPercentProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) err
 	return nil
 }
 
-func (t *TimedPercentStop) ReSetStopLosser(currentPrice decimal.Decimal) error {
+func (t *DebouncedPercentStop) ReSetStopLosser(currentPrice decimal.Decimal) error {
 	if !t.Active {
 		return stoploss.ErrStatusInvalid
 	}
@@ -282,7 +282,7 @@ func (t *TimedPercentStop) ReSetStopLosser(currentPrice decimal.Decimal) error {
 	return nil
 }
 
-func (t *TimedPercentProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
+func (t *DebouncedPercentProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
 	if !t.Active {
 		return stoploss.ErrStatusInvalid
 	}

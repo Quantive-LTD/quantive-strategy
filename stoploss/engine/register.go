@@ -20,29 +20,29 @@ import (
 )
 
 type Portfolio struct {
-	mutex                     sync.Mutex
-	fixedStoplossStrategies   map[string]stoploss.FixedStopLoss
-	timedStoplossStrategies   map[string]stoploss.TimeBasedStopLoss
-	fixedTakeProfitStrategies map[string]stoploss.FixedTakeProfit
-	timedTakeProfitStrategies map[string]stoploss.TimeBasedTakeProfit
-	hybridFixedStrategies     map[string]stoploss.HybridWithoutTime
-	hybridTimedStrategies     map[string]stoploss.HybridWithTime
-	openGeneral               bool
-	openHybrid                bool
-	count                     int
+	mutex                         sync.Mutex
+	fixedStoplossStrategies       map[string]stoploss.FixedStopLoss
+	DebouncedStoplossStrategies   map[string]stoploss.DebouncedStopLoss
+	fixedTakeProfitStrategies     map[string]stoploss.FixedTakeProfit
+	DebouncedTakeProfitStrategies map[string]stoploss.DebouncedTakeProfit
+	hybridFixedStrategies         map[string]stoploss.HybridWithoutTime
+	hybridDebouncedStrategies     map[string]stoploss.HybridWithTime
+	openGeneral                   bool
+	openHybrid                    bool
+	count                         int
 }
 
 func NewPortfolio() *Portfolio {
 	return &Portfolio{
-		fixedStoplossStrategies:   make(map[string]stoploss.FixedStopLoss),
-		timedStoplossStrategies:   make(map[string]stoploss.TimeBasedStopLoss),
-		fixedTakeProfitStrategies: make(map[string]stoploss.FixedTakeProfit),
-		timedTakeProfitStrategies: make(map[string]stoploss.TimeBasedTakeProfit),
-		hybridFixedStrategies:     make(map[string]stoploss.HybridWithoutTime),
-		hybridTimedStrategies:     make(map[string]stoploss.HybridWithTime),
-		openGeneral:               false,
-		openHybrid:                false,
-		count:                     0,
+		fixedStoplossStrategies:       make(map[string]stoploss.FixedStopLoss),
+		DebouncedStoplossStrategies:   make(map[string]stoploss.DebouncedStopLoss),
+		fixedTakeProfitStrategies:     make(map[string]stoploss.FixedTakeProfit),
+		DebouncedTakeProfitStrategies: make(map[string]stoploss.DebouncedTakeProfit),
+		hybridFixedStrategies:         make(map[string]stoploss.HybridWithoutTime),
+		hybridDebouncedStrategies:     make(map[string]stoploss.HybridWithTime),
+		openGeneral:                   false,
+		openHybrid:                    false,
+		count:                         0,
 	}
 }
 
@@ -55,11 +55,11 @@ func (p *Portfolio) RegistFixedStoplossStrategy(name string, strategy stoploss.F
 	p.count++
 }
 
-func (p *Portfolio) RegistTimedStoplossStrategy(name string, strategy stoploss.TimeBasedStopLoss) {
+func (p *Portfolio) RegistDebouncedStoplossStrategy(name string, strategy stoploss.DebouncedStopLoss) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	p.timedStoplossStrategies[name] = strategy
+	p.DebouncedStoplossStrategies[name] = strategy
 	p.openGeneral = true
 	p.count++
 }
@@ -73,16 +73,16 @@ func (p *Portfolio) RegistFixedTakeProfitStrategy(name string, strategy stoploss
 	p.count++
 }
 
-func (p *Portfolio) RegistTimedTakeProfitStrategy(name string, strategy stoploss.TimeBasedTakeProfit) {
+func (p *Portfolio) RegistDebouncedTakeProfitStrategy(name string, strategy stoploss.DebouncedTakeProfit) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	p.timedTakeProfitStrategies[name] = strategy
+	p.DebouncedTakeProfitStrategies[name] = strategy
 	p.openGeneral = true
 	p.count++
 }
 
-func (p *Portfolio) RegistHybridStrategy(name string, strategy stoploss.HybridWithoutTime) {
+func (p *Portfolio) RegistHybridFixedStrategy(name string, strategy stoploss.HybridWithoutTime) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -91,10 +91,10 @@ func (p *Portfolio) RegistHybridStrategy(name string, strategy stoploss.HybridWi
 	p.count++
 }
 
-func (p *Portfolio) RegistHybridTimedStrategy(name string, strategy stoploss.HybridWithTime) {
+func (p *Portfolio) RegistHybridDebouncedStrategy(name string, strategy stoploss.HybridWithTime) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	p.hybridTimedStrategies[name] = strategy
+	p.hybridDebouncedStrategies[name] = strategy
 	p.openHybrid = true
 	p.count++
 }
@@ -111,13 +111,13 @@ func (p *Portfolio) GetFixedStoplossStrategies() map[string]stoploss.FixedStopLo
 	return copyMap
 }
 
-func (p *Portfolio) GetTimedStoplossStrategies() map[string]stoploss.TimeBasedStopLoss {
+func (p *Portfolio) GetDebouncedStoplossStrategies() map[string]stoploss.DebouncedStopLoss {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
 	// Return a copy
-	copyMap := make(map[string]stoploss.TimeBasedStopLoss)
-	for k, v := range p.timedStoplossStrategies {
+	copyMap := make(map[string]stoploss.DebouncedStopLoss)
+	for k, v := range p.DebouncedStoplossStrategies {
 		copyMap[k] = v
 	}
 	return copyMap
@@ -135,13 +135,13 @@ func (p *Portfolio) GetFixedTakeProfitStrategies() map[string]stoploss.FixedTake
 	return copyMap
 }
 
-func (p *Portfolio) GetTimedTakeProfitStrategies() map[string]stoploss.TimeBasedTakeProfit {
+func (p *Portfolio) GetDebouncedTakeProfitStrategies() map[string]stoploss.DebouncedTakeProfit {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
 	// Return a copy to avoid race conditions
-	copyMap := make(map[string]stoploss.TimeBasedTakeProfit)
-	for k, v := range p.timedTakeProfitStrategies {
+	copyMap := make(map[string]stoploss.DebouncedTakeProfit)
+	for k, v := range p.DebouncedTakeProfitStrategies {
 		copyMap[k] = v
 	}
 	return copyMap
@@ -159,13 +159,13 @@ func (p *Portfolio) GetHybridStrategies() map[string]stoploss.HybridWithoutTime 
 	return copyMap
 }
 
-func (p *Portfolio) GetHybridTimedStrategies() map[string]stoploss.HybridWithTime {
+func (p *Portfolio) GetHybridDebouncedStrategies() map[string]stoploss.HybridWithTime {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
 	// Return a copy to avoid race conditions
 	copyMap := make(map[string]stoploss.HybridWithTime)
-	for k, v := range p.hybridTimedStrategies {
+	for k, v := range p.hybridDebouncedStrategies {
 		copyMap[k] = v
 	}
 	return copyMap

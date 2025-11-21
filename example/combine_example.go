@@ -19,6 +19,7 @@ import (
 )
 
 func CombineExample() {
+	// ============ Context ============
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -42,7 +43,6 @@ func CombineExample() {
 
 	// ============ StopLoss Engine ============
 	manger := engine.New(engine.DefaultConfig())
-
 	trailingStopStrategy, _ := strategy.NewFixedTrailingStop(
 		pricePoint.NewPrice,
 		decimal.NewFromFloat(0.03),
@@ -88,7 +88,7 @@ func CombineExample() {
 		}
 	}()
 
-	// ============ Handle Signals ============
+	// ============ Handle Shutdown Signals ============
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 

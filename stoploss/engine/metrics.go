@@ -29,42 +29,42 @@ type Metrics struct {
 
 	// FixedStopReceived counts the number of fixed stop loss messages received
 	FixedStopReceived *metric.CounterInt64
-	// TimedStopReceived counts the number of timed stop loss messages received
-	TimedStopReceived *metric.CounterInt64
+	// DebouncedStopReceived counts the number of Debounced stop loss messages received
+	DebouncedStopReceived *metric.CounterInt64
 	// FixedProfitReceived counts the number of fixed profit messages received
 	FixedProfitReceived *metric.CounterInt64
-	// TimedProfitReceived counts the number of timed profit messages received
-	TimedProfitReceived *metric.CounterInt64
+	// DebouncedProfitReceived counts the number of Debounced profit messages received
+	DebouncedProfitReceived *metric.CounterInt64
 	// HybridFixedReceived counts the number of hybrid fixed messages received
 	HybridFixedReceived *metric.CounterInt64
-	// HybridTimedReceived counts the number of hybrid timed messages received
-	HybridTimedReceived *metric.CounterInt64
+	// HybridDebouncedReceived counts the number of hybrid Debounced messages received
+	HybridDebouncedReceived *metric.CounterInt64
 
 	// FixedStopDropped counts the number of fixed stop loss messages dropped
 	FixedStopDropped *metric.CounterInt64
-	// TimedStopDropped counts the number of timed stop loss messages dropped
-	TimedStopDropped *metric.CounterInt64
+	// DebouncedStopDropped counts the number of Debounced stop loss messages dropped
+	DebouncedStopDropped *metric.CounterInt64
 	// FixedProfitDropped counts the number of fixed profit messages dropped
 	FixedProfitDropped *metric.CounterInt64
-	// TimedProfitDropped counts the number of timed profit messages dropped
-	TimedProfitDropped *metric.CounterInt64
+	// DebouncedProfitDropped counts the number of Debounced profit messages dropped
+	DebouncedProfitDropped *metric.CounterInt64
 	// HybridFixedDropped counts the number of hybrid fixed messages dropped
 	HybridFixedDropped *metric.CounterInt64
-	// HybridTimedDropped counts the number of hybrid timed messages dropped
-	HybridTimedDropped *metric.CounterInt64
+	// HybridDebouncedDropped counts the number of hybrid Debounced messages dropped
+	HybridDebouncedDropped *metric.CounterInt64
 
-	// FixedStopTimeout counts the number of fixed stop loss messages timed out
+	// FixedStopTimeout counts the number of fixed stop loss messages Debounced out
 	FixedStopTimeout *metric.CounterInt64
-	// TimedStopTimeout counts the number of timed stop loss messages timed out
-	TimedStopTimeout *metric.CounterInt64
-	// FixedProfitTimeout counts the number of fixed profit messages timed out
+	// DebouncedStopTimeout counts the number of Debounced stop loss messages Debounced out
+	DebouncedStopTimeout *metric.CounterInt64
+	// FixedProfitTimeout counts the number of fixed profit messages Debounced out
 	FixedProfitTimeout *metric.CounterInt64
-	// TimedProfitTimeout counts the number of timed profit messages timed out
-	TimedProfitTimeout *metric.CounterInt64
-	// HybridFixedTimeout counts the number of hybrid fixed messages timed out
+	// DebouncedProfitTimeout counts the number of Debounced profit messages Debounced out
+	DebouncedProfitTimeout *metric.CounterInt64
+	// HybridFixedTimeout counts the number of hybrid fixed messages Debounced out
 	HybridFixedTimeout *metric.CounterInt64
-	// HybridTimedTimeout counts the number of hybrid timed messages timed out
-	HybridTimedTimeout *metric.CounterInt64
+	// HybridDebouncedTimeout counts the number of hybrid Debounced messages Debounced out
+	HybridDebouncedTimeout *metric.CounterInt64
 
 	// StartTime records the time when the metrics tracking started
 	StartTime time.Time
@@ -73,27 +73,27 @@ type Metrics struct {
 // NewMetrics creates a new Metrics instance
 func NewMetrics() *Metrics {
 	return &Metrics{
-		StartTime:           time.Now(),
-		TotalReceived:       metric.NewCounterInt64(),
-		TotalDropped:        metric.NewCounterInt64(),
-		FixedStopReceived:   metric.NewCounterInt64(),
-		TimedStopReceived:   metric.NewCounterInt64(),
-		FixedProfitReceived: metric.NewCounterInt64(),
-		TimedProfitReceived: metric.NewCounterInt64(),
-		HybridFixedReceived: metric.NewCounterInt64(),
-		HybridTimedReceived: metric.NewCounterInt64(),
-		FixedStopDropped:    metric.NewCounterInt64(),
-		TimedStopDropped:    metric.NewCounterInt64(),
-		FixedProfitDropped:  metric.NewCounterInt64(),
-		TimedProfitDropped:  metric.NewCounterInt64(),
-		HybridFixedDropped:  metric.NewCounterInt64(),
-		HybridTimedDropped:  metric.NewCounterInt64(),
-		FixedStopTimeout:    metric.NewCounterInt64(),
-		TimedStopTimeout:    metric.NewCounterInt64(),
-		FixedProfitTimeout:  metric.NewCounterInt64(),
-		TimedProfitTimeout:  metric.NewCounterInt64(),
-		HybridFixedTimeout:  metric.NewCounterInt64(),
-		HybridTimedTimeout:  metric.NewCounterInt64(),
+		StartTime:               time.Now(),
+		TotalReceived:           metric.NewCounterInt64(),
+		TotalDropped:            metric.NewCounterInt64(),
+		FixedStopReceived:       metric.NewCounterInt64(),
+		DebouncedStopReceived:   metric.NewCounterInt64(),
+		FixedProfitReceived:     metric.NewCounterInt64(),
+		DebouncedProfitReceived: metric.NewCounterInt64(),
+		HybridFixedReceived:     metric.NewCounterInt64(),
+		HybridDebouncedReceived: metric.NewCounterInt64(),
+		FixedStopDropped:        metric.NewCounterInt64(),
+		DebouncedStopDropped:    metric.NewCounterInt64(),
+		FixedProfitDropped:      metric.NewCounterInt64(),
+		DebouncedProfitDropped:  metric.NewCounterInt64(),
+		HybridFixedDropped:      metric.NewCounterInt64(),
+		HybridDebouncedDropped:  metric.NewCounterInt64(),
+		FixedStopTimeout:        metric.NewCounterInt64(),
+		DebouncedStopTimeout:    metric.NewCounterInt64(),
+		FixedProfitTimeout:      metric.NewCounterInt64(),
+		DebouncedProfitTimeout:  metric.NewCounterInt64(),
+		HybridFixedTimeout:      metric.NewCounterInt64(),
+		HybridDebouncedTimeout:  metric.NewCounterInt64(),
 	}
 }
 
@@ -112,8 +112,8 @@ func (m *Metrics) RecordChannelSend(typ model.StrategyType, channel model.Strate
 	switch typ {
 	case model.HYBRID_FIXED:
 		m.HybridFixedReceived.Inc(1)
-	case model.HYBRID_TIMED:
-		m.HybridTimedReceived.Inc(1)
+	case model.HYBRID_DEBUNCED:
+		m.HybridDebouncedReceived.Inc(1)
 	case model.FIXED:
 		switch channel {
 		case model.STOP_LOSS:
@@ -121,12 +121,12 @@ func (m *Metrics) RecordChannelSend(typ model.StrategyType, channel model.Strate
 		case model.TAKE_PROFIT:
 			m.FixedProfitReceived.Inc(1)
 		}
-	case model.TIMED:
+	case model.DEBUNCED:
 		switch channel {
 		case model.STOP_LOSS:
-			m.TimedStopReceived.Inc(1)
+			m.DebouncedStopReceived.Inc(1)
 		case model.TAKE_PROFIT:
-			m.TimedProfitReceived.Inc(1)
+			m.DebouncedProfitReceived.Inc(1)
 		}
 	}
 }
@@ -136,8 +136,8 @@ func (m *Metrics) RecordChannelDrop(typ model.StrategyType, channel model.Strate
 	switch typ {
 	case model.HYBRID_FIXED:
 		m.HybridFixedDropped.Inc(1)
-	case model.HYBRID_TIMED:
-		m.HybridTimedDropped.Inc(1)
+	case model.HYBRID_DEBUNCED:
+		m.HybridDebouncedDropped.Inc(1)
 	case model.FIXED:
 		switch channel {
 		case model.STOP_LOSS:
@@ -145,12 +145,12 @@ func (m *Metrics) RecordChannelDrop(typ model.StrategyType, channel model.Strate
 		case model.TAKE_PROFIT:
 			m.FixedProfitDropped.Inc(1)
 		}
-	case model.TIMED:
+	case model.DEBUNCED:
 		switch channel {
 		case model.STOP_LOSS:
-			m.TimedStopDropped.Inc(1)
+			m.DebouncedStopDropped.Inc(1)
 		case model.TAKE_PROFIT:
-			m.TimedProfitDropped.Inc(1)
+			m.DebouncedProfitDropped.Inc(1)
 		}
 	}
 }
@@ -160,8 +160,8 @@ func (m *Metrics) RecordChannelTimeout(typ model.StrategyType, channel model.Str
 	switch typ {
 	case model.HYBRID_FIXED:
 		m.HybridFixedTimeout.Inc(1)
-	case model.HYBRID_TIMED:
-		m.HybridTimedTimeout.Inc(1)
+	case model.HYBRID_DEBUNCED:
+		m.HybridDebouncedTimeout.Inc(1)
 	case model.FIXED:
 		switch channel {
 		case model.STOP_LOSS:
@@ -169,12 +169,12 @@ func (m *Metrics) RecordChannelTimeout(typ model.StrategyType, channel model.Str
 		case model.TAKE_PROFIT:
 			m.FixedProfitTimeout.Inc(1)
 		}
-	case model.TIMED:
+	case model.DEBUNCED:
 		switch channel {
 		case model.STOP_LOSS:
-			m.TimedStopTimeout.Inc(1)
+			m.DebouncedStopTimeout.Inc(1)
 		case model.TAKE_PROFIT:
-			m.TimedProfitTimeout.Inc(1)
+			m.DebouncedProfitTimeout.Inc(1)
 		}
 	}
 }
@@ -203,30 +203,30 @@ func (m *Metrics) Stats() map[string]interface{} {
 				"dropped":  m.FixedStopDropped.Snapshot().Count(),
 				"timeout":  m.FixedStopTimeout.Snapshot().Count(),
 			},
-			"timed_stop": map[string]int64{
-				"received": m.TimedStopReceived.Snapshot().Count(),
-				"dropped":  m.TimedStopDropped.Snapshot().Count(),
-				"timeout":  m.TimedStopTimeout.Snapshot().Count(),
+			"Debounced_stop": map[string]int64{
+				"received": m.DebouncedStopReceived.Snapshot().Count(),
+				"dropped":  m.DebouncedStopDropped.Snapshot().Count(),
+				"timeout":  m.DebouncedStopTimeout.Snapshot().Count(),
 			},
 			"fixed_profit": map[string]int64{
 				"received": m.FixedProfitReceived.Snapshot().Count(),
 				"dropped":  m.FixedProfitDropped.Snapshot().Count(),
 				"timeout":  m.FixedProfitTimeout.Snapshot().Count(),
 			},
-			"timed_profit": map[string]int64{
-				"received": m.TimedProfitReceived.Snapshot().Count(),
-				"dropped":  m.TimedProfitDropped.Snapshot().Count(),
-				"timeout":  m.TimedProfitTimeout.Snapshot().Count(),
+			"Debounced_profit": map[string]int64{
+				"received": m.DebouncedProfitReceived.Snapshot().Count(),
+				"dropped":  m.DebouncedProfitDropped.Snapshot().Count(),
+				"timeout":  m.DebouncedProfitTimeout.Snapshot().Count(),
 			},
 			"hybrid_fixed": map[string]int64{
 				"received": m.HybridFixedReceived.Snapshot().Count(),
 				"dropped":  m.HybridFixedDropped.Snapshot().Count(),
 				"timeout":  m.HybridFixedTimeout.Snapshot().Count(),
 			},
-			"hybrid_timed": map[string]int64{
-				"received": m.HybridTimedReceived.Snapshot().Count(),
-				"dropped":  m.HybridTimedDropped.Snapshot().Count(),
-				"timeout":  m.HybridTimedTimeout.Snapshot().Count(),
+			"hybrid_Debounced": map[string]int64{
+				"received": m.HybridDebouncedReceived.Snapshot().Count(),
+				"dropped":  m.HybridDebouncedDropped.Snapshot().Count(),
+				"timeout":  m.HybridDebouncedTimeout.Snapshot().Count(),
 			},
 		},
 	}

@@ -25,7 +25,7 @@ var (
 )
 
 // Time-based
-type TimeBasedStopLoss interface {
+type DebouncedStopLoss interface {
 	StopLoss
 	StopLossCondT
 }
@@ -42,9 +42,9 @@ type FixedVolatilityStopLoss interface {
 	UpdateATR(currentATR decimal.Decimal) error
 }
 
-// Timed-ATR
-type TimedVolatilityStopLoss interface {
-	TimeBasedStopLoss
+// Debounced-ATR
+type DebouncedVolatilityStopLoss interface {
+	DebouncedStopLoss
 	UpdateATR(currentATR decimal.Decimal) error
 }
 
@@ -54,9 +54,9 @@ type FixedMAStopLoss interface {
 	SetMA(value decimal.Decimal)
 }
 
-// Timed-Moving Average
-type TimedMAStopLoss interface {
-	TimeBasedStopLoss
+// Debounced-Moving Average
+type DebouncedMAStopLoss interface {
+	DebouncedStopLoss
 	SetMA(value decimal.Decimal)
 }
 

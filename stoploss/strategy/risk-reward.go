@@ -27,7 +27,7 @@ type RiskRewardRatio struct {
 	takeProfit  decimal.Decimal
 }
 
-type RiskRewardRatioTimed struct {
+type RiskRewardRatioDebounced struct {
 	RiskRewardRatio
 	TimeThreshold int64
 	TriggerTime   int64
@@ -54,14 +54,14 @@ func NewRiskRewardRatio(entryPrice, riskRatio, rewardRatio decimal.Decimal, call
 	return s, nil
 }
 
-func NewRiskRewardRatioTimed(entryPrice, riskRatio, rewardRatio decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.HybridWithTime, error) {
+func NewRiskRewardRatioDebounced(entryPrice, riskRatio, rewardRatio decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.HybridWithTime, error) {
 	if riskRatio.IsNegative() || riskRatio.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errStopLossRateInvalid
 	}
 	if rewardRatio.IsNegative() || rewardRatio.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errStopLossRateInvalid
 	}
-	s := &RiskRewardRatioTimed{
+	s := &RiskRewardRatioDebounced{
 		RiskRewardRatio: RiskRewardRatio{
 			LastPrice:   entryPrice,
 			riskRatio:   riskRatio,
@@ -79,7 +79,7 @@ func NewRiskRewardRatioTimed(entryPrice, riskRatio, rewardRatio decimal.Decimal,
 	return s, nil
 }
 
-func (r *RiskRewardRatioTimed) GetTimeThreshold() (int64, error) {
+func (r *RiskRewardRatioDebounced) GetTimeThreshold() (int64, error) {
 	if !r.Active {
 		return 0, stoploss.ErrStatusInvalid
 	}
@@ -124,7 +124,7 @@ func (r *RiskRewardRatio) ShouldTriggerTakeProfit(currentPrice decimal.Decimal) 
 	return false, nil
 }
 
-func (r *RiskRewardRatioTimed) ShouldTriggerStopLoss(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
+func (r *RiskRewardRatioDebounced) ShouldTriggerStopLoss(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
 	if !r.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -145,7 +145,7 @@ func (r *RiskRewardRatioTimed) ShouldTriggerStopLoss(currentPrice decimal.Decima
 	return false, nil
 }
 
-func (r *RiskRewardRatioTimed) ShouldTriggerTakeProfit(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
+func (r *RiskRewardRatioDebounced) ShouldTriggerTakeProfit(currentPrice decimal.Decimal, currentTime int64) (bool, error) {
 	if !r.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -190,7 +190,7 @@ func (r *RiskRewardRatio) ReSet(newPrice decimal.Decimal) error {
 	return nil
 }
 
-func (r *RiskRewardRatioTimed) ReSet(newPrice decimal.Decimal) error {
+func (r *RiskRewardRatioDebounced) ReSet(newPrice decimal.Decimal) error {
 	if !r.Active {
 		return stoploss.ErrStatusInvalid
 	}
