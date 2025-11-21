@@ -36,8 +36,8 @@ type Hybrid interface {
 	Deactivate() error
 }
 
-// Time-based
-type TimeBasedTakeProfit interface {
+// Debounced
+type DebouncedTakeProfit interface {
 	TakeProfit
 	TakeProfitCondT
 }
@@ -54,9 +54,9 @@ type FixedVolatilityTakeProfit interface {
 	UpdateATR(currentATR decimal.Decimal) error
 }
 
-// Timed-ATR
-type TimedVolatilityTakeProfit interface {
-	TimeBasedTakeProfit
+// Debounced-ATR
+type DebouncedVolatilityTakeProfit interface {
+	DebouncedTakeProfit
 	UpdateATR(currentATR decimal.Decimal) error
 }
 
@@ -66,9 +66,9 @@ type FixedMATakeProfit interface {
 	SetMA(value decimal.Decimal)
 }
 
-// Timed-Moving Average
-type TimedMATakeProfit interface {
-	TimeBasedTakeProfit
+// Debounced-Moving Average
+type DebouncedMATakeProfit interface {
+	DebouncedTakeProfit
 	SetMA(value decimal.Decimal)
 }
 

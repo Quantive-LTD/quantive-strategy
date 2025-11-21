@@ -34,15 +34,15 @@ type FixedTrailingProfit struct {
 	threshold    decimal.Decimal
 }
 
-// TrailingTimeBasedStop represents a time-based trailing stop loss strategy
-type TrailingTimeBasedStop struct {
+// TrailingDebouncedStop represents a time-based trailing stop loss strategy
+type TrailingDebouncedStop struct {
 	FixedTrailingStop
 	timeThreshold int64
 	triggerTime   int64
 }
 
-// TrailingTimeBasedProfit represents a time-based trailing take profit strategy
-type TrailingTimeBasedProfit struct {
+// TrailingDebouncedProfit represents a time-based trailing take profit strategy
+type TrailingDebouncedProfit struct {
 	FixedTrailingProfit
 	timeThreshold int64
 	triggerTime   int64
@@ -80,15 +80,15 @@ func NewFixedTrailingProfit(entryPrice, takeProfitRate decimal.Decimal, callback
 	}, nil
 }
 
-// NewTrailingTimeBasedStop creates a TimeBasedTrailingStopLoss based on fixed percentage and time threshold
-func NewTrailingTimeBasedStop(entryPrice, stopLossRate decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.TimeBasedStopLoss, error) {
+// NewTrailingDebouncedStop creates a DebouncedTrailingStopLoss based on fixed percentage and time threshold
+func NewTrailingDebouncedStop(entryPrice, stopLossRate decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.DebouncedStopLoss, error) {
 	if stopLossRate.IsNegative() || stopLossRate.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errStopLossRateInvalid
 	}
 	if timeThreshold <= 0 {
 		return nil, errTimeThresholdInvalid
 	}
-	return &TrailingTimeBasedStop{
+	return &TrailingDebouncedStop{
 		FixedTrailingStop: FixedTrailingStop{
 			tolerancePct: stopLossRate,
 			lastPrice:    entryPrice,
@@ -102,15 +102,15 @@ func NewTrailingTimeBasedStop(entryPrice, stopLossRate decimal.Decimal, timeThre
 	}, nil
 }
 
-// NewTrailingTimeBasedProfit creates a TimeBasedTrailingTakeProfit based on fixed percentage and time threshold
-func NewTrailingTimeBasedProfit(entryPrice, takeProfitRate decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.TimeBasedTakeProfit, error) {
+// NewTrailingDebouncedProfit creates a DebouncedTrailingTakeProfit based on fixed percentage and time threshold
+func NewTrailingDebouncedProfit(entryPrice, takeProfitRate decimal.Decimal, timeThreshold int64, callback stoploss.DefaultCallback) (stoploss.DebouncedTakeProfit, error) {
 	if takeProfitRate.IsNegative() || takeProfitRate.GreaterThan(decimal.NewFromInt(1)) {
 		return nil, errTakeProfitRateInvalid
 	}
 	if timeThreshold <= 0 {
 		return nil, errTimeThresholdInvalid
 	}
-	return &TrailingTimeBasedProfit{
+	return &TrailingDebouncedProfit{
 		FixedTrailingProfit: FixedTrailingProfit{
 			tolerancePct: takeProfitRate,
 			lastPrice:    entryPrice,
@@ -149,7 +149,7 @@ func (t *FixedTrailingProfit) CalculateTakeProfit(currentPrice decimal.Decimal) 
 }
 
 // CalculateStopLoss represents first update last price and calculate stop loss then update threshold
-func (t *TrailingTimeBasedStop) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+func (t *TrailingDebouncedStop) CalculateStopLoss(currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	if !t.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -163,7 +163,7 @@ func (t *TrailingTimeBasedStop) CalculateStopLoss(currentPrice decimal.Decimal) 
 }
 
 // CalculateTakeProfit represents first update last price and calculate take profit then update threshold
-func (t *TrailingTimeBasedProfit) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
+func (t *TrailingDebouncedProfit) CalculateTakeProfit(currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	if !t.Active {
 		return decimal.Zero, stoploss.ErrStatusInvalid
 	}
@@ -207,7 +207,7 @@ func (t *FixedTrailingProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decim
 }
 
 // ShouldTriggerStopLoss checks if the stop loss should be triggered based on time threshold and price threshold
-func (t *TrailingTimeBasedStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal, currentTimestamp int64) (bool, error) {
+func (t *TrailingDebouncedStop) ShouldTriggerStopLoss(currentPrice decimal.Decimal, currentTimestamp int64) (bool, error) {
 	if !t.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -215,7 +215,7 @@ func (t *TrailingTimeBasedStop) ShouldTriggerStopLoss(currentPrice decimal.Decim
 		if t.triggerTime == 0 {
 			t.triggerTime = currentTimestamp
 		} else if currentTimestamp-t.triggerTime >= t.timeThreshold {
-			err := t.Trigger(stoploss.TRIGGERED_REASON_TIMED_TRAILING_STOPLOSS)
+			err := t.Trigger(stoploss.TRIGGERED_REASON_DEBOUNCED_TRAILING_STOPLOSS)
 			if err != nil {
 				return true, stoploss.ErrCallBackFail
 			}
@@ -228,7 +228,7 @@ func (t *TrailingTimeBasedStop) ShouldTriggerStopLoss(currentPrice decimal.Decim
 }
 
 // ShouldTriggerTakeProfit checks if the take profit should be triggered based on time threshold and price threshold
-func (t *TrailingTimeBasedProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decimal, currentTimestamp int64) (bool, error) {
+func (t *TrailingDebouncedProfit) ShouldTriggerTakeProfit(currentPrice decimal.Decimal, currentTimestamp int64) (bool, error) {
 	if !t.Active {
 		return false, stoploss.ErrStatusInvalid
 	}
@@ -236,7 +236,7 @@ func (t *TrailingTimeBasedProfit) ShouldTriggerTakeProfit(currentPrice decimal.D
 		if t.triggerTime == 0 {
 			t.triggerTime = currentTimestamp
 		} else if currentTimestamp-t.triggerTime >= t.timeThreshold {
-			err := t.Trigger(stoploss.TRIGGERED_REASON_TIMED_TRAILING_TAKEPROFIT)
+			err := t.Trigger(stoploss.TRIGGERED_REASON_DEBOUNCED_TRAILING_TAKEPROFIT)
 			if err != nil {
 				return true, stoploss.ErrCallBackFail
 			}
@@ -249,7 +249,7 @@ func (t *TrailingTimeBasedProfit) ShouldTriggerTakeProfit(currentPrice decimal.D
 }
 
 // GetTimeThreshold returns the time threshold for stop loss
-func (t *TrailingTimeBasedStop) GetTimeThreshold() (int64, error) {
+func (t *TrailingDebouncedStop) GetTimeThreshold() (int64, error) {
 	if !t.Active {
 		return 0, stoploss.ErrStatusInvalid
 	}
@@ -257,7 +257,7 @@ func (t *TrailingTimeBasedStop) GetTimeThreshold() (int64, error) {
 }
 
 // GetTimeThreshold returns the time threshold for take profit
-func (t *TrailingTimeBasedProfit) GetTimeThreshold() (int64, error) {
+func (t *TrailingDebouncedProfit) GetTimeThreshold() (int64, error) {
 	if !t.Active {
 		return 0, stoploss.ErrStatusInvalid
 	}
@@ -303,7 +303,7 @@ func (t *FixedTrailingProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) er
 }
 
 // ReSetStopLosser resets the stop loss based on the current price
-func (t *TrailingTimeBasedStop) ReSetStopLosser(currentPrice decimal.Decimal) error {
+func (t *TrailingDebouncedStop) ReSetStopLosser(currentPrice decimal.Decimal) error {
 	if !t.Active {
 		return stoploss.ErrStatusInvalid
 	}
@@ -315,7 +315,7 @@ func (t *TrailingTimeBasedStop) ReSetStopLosser(currentPrice decimal.Decimal) er
 }
 
 // ReSetTakeProfiter resets the take profit based on the current price
-func (t *TrailingTimeBasedProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
+func (t *TrailingDebouncedProfit) ReSetTakeProfiter(currentPrice decimal.Decimal) error {
 	if !t.Active {
 		return stoploss.ErrStatusInvalid
 	}

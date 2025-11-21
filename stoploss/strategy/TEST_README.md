@@ -15,8 +15,8 @@ stoploss/strategy/
 ├── fixed-percentcile_test.go      # Fixed percentage stop loss tests
 ├── trailing.go                    # Trailing stop loss implementation
 ├── trailing_test.go               # Trailing stop loss tests
-├── trailing-timebased.go          # Time-based trailing stop loss implementation
-└── trailing-timebased_test.go     # Time-based trailing stop loss tests
+├── trailing-Debounced.go          # Time-based trailing stop loss implementation
+└── trailing-Debounced_test.go     # Time-based trailing stop loss tests
 ```
 
 ## Unified Test Data (testdata.go)
@@ -152,7 +152,7 @@ Stop Loss Price = Entry Price × (1 - Stop Loss Percentage)
 Stop Loss Price = max(Previous Stop Loss, Current Price × (1 - Stop Loss Rate))
 ```
 
-### Time-Based Trailing Stop Loss (trailing-timebased_test.go)
+### Time-Based Trailing Stop Loss (trailing-Debounced_test.go)
 
 **Characteristics**:
 - Combines trailing stop with time confirmation
@@ -209,12 +209,12 @@ func TestMyStrategy(t *testing.T) {
 ### 2. Time Simulation for Time-Based Tests
 
 ```go
-func TestTimeBasedStrategy(t *testing.T) {
+func TestDebouncedStrategy(t *testing.T) {
     data := GetMockHistoricalData()
     entryPrice := data[0].Close
     timeThreshold := int64(300) // 5 minutes
     
-    s, _ := NewTrailingTimeBased(entryPrice, d(0.05), timeThreshold, nil)
+    s, _ := NewTrailingDebounced(entryPrice, d(0.05), timeThreshold, nil)
     
     baseTime := int64(1000000) // Starting timestamp
     
@@ -273,7 +273,7 @@ go test ./stoploss/strategy -cover
 go test ./stoploss/strategy -v -run TestTrailing
 
 # Run time-based tests
-go test ./stoploss/strategy -v -run TestTrailingTimeBased
+go test ./stoploss/strategy -v -run TestTrailingDebounced
 ```
 
 ## Test Best Practices

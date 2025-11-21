@@ -19,12 +19,12 @@ import (
 )
 
 type Execution struct {
-	fixedStoplossChannel   chan model.PricePoint
-	timedStoplossChannel   chan model.PricePoint
-	fixedTakeProfitChannel chan model.PricePoint
-	timedTakeProfitChannel chan model.PricePoint
-	hybridFixedChannel     chan model.PricePoint
-	hybridTimedChannel     chan model.PricePoint
+	fixedStoplossChannel       chan model.PricePoint
+	DebouncedStoplossChannel   chan model.PricePoint
+	fixedTakeProfitChannel     chan model.PricePoint
+	DebouncedTakeProfitChannel chan model.PricePoint
+	hybridFixedChannel         chan model.PricePoint
+	hybridDebouncedChannel     chan model.PricePoint
 
 	generalResults chan result.StrategyGeneralResult
 	hybridResults  chan result.StrategyHybridResult
@@ -32,14 +32,14 @@ type Execution struct {
 
 func NewExecutionManager(bufferSize int, bufferRSize int) *Execution {
 	return &Execution{
-		fixedStoplossChannel:   make(chan model.PricePoint, bufferSize),
-		timedStoplossChannel:   make(chan model.PricePoint, bufferSize),
-		fixedTakeProfitChannel: make(chan model.PricePoint, bufferSize),
-		timedTakeProfitChannel: make(chan model.PricePoint, bufferSize),
-		hybridFixedChannel:     make(chan model.PricePoint, bufferSize),
-		hybridTimedChannel:     make(chan model.PricePoint, bufferSize),
-		generalResults:         make(chan result.StrategyGeneralResult, bufferRSize),
-		hybridResults:          make(chan result.StrategyHybridResult, bufferRSize),
+		fixedStoplossChannel:       make(chan model.PricePoint, bufferSize),
+		DebouncedStoplossChannel:   make(chan model.PricePoint, bufferSize),
+		fixedTakeProfitChannel:     make(chan model.PricePoint, bufferSize),
+		DebouncedTakeProfitChannel: make(chan model.PricePoint, bufferSize),
+		hybridFixedChannel:         make(chan model.PricePoint, bufferSize),
+		hybridDebouncedChannel:     make(chan model.PricePoint, bufferSize),
+		generalResults:             make(chan result.StrategyGeneralResult, bufferRSize),
+		hybridResults:              make(chan result.StrategyHybridResult, bufferRSize),
 	}
 }
 
@@ -49,11 +49,11 @@ func (e *Execution) getResult() (<-chan result.StrategyGeneralResult, <-chan res
 
 func (e *Execution) closeChannels() {
 	close(e.fixedStoplossChannel)
-	close(e.timedStoplossChannel)
+	close(e.DebouncedStoplossChannel)
 	close(e.fixedTakeProfitChannel)
-	close(e.timedTakeProfitChannel)
+	close(e.DebouncedTakeProfitChannel)
 	close(e.hybridFixedChannel)
-	close(e.hybridTimedChannel)
+	close(e.hybridDebouncedChannel)
 	close(e.generalResults)
 	close(e.hybridResults)
 }

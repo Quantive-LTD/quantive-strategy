@@ -7,11 +7,11 @@ This document explains the complete flow from strategy execution to result proce
 The manager uses **6 goroutines** (not 4) to handle different strategy types:
 
 1. **Goroutine 1**: Fixed Stop Loss strategies
-2. **Goroutine 2**: Timed Stop Loss strategies  
+2. **Goroutine 2**: Debounced Stop Loss strategies  
 3. **Goroutine 3**: Fixed Take Profit strategies
-4. **Goroutine 4**: Timed Take Profit strategies
+4. **Goroutine 4**: Debounced Take Profit strategies
 5. **Goroutine 5**: Fixed Hybrid strategies (without time)
-6. **Goroutine 6**: Timed Hybrid strategies (with time)
+6. **Goroutine 6**: Debounced Hybrid strategies (with time)
 
 ## Data Flow
 
@@ -95,13 +95,13 @@ Used for single-purpose strategies (stop loss OR take profit):
 ```go
 type StrategyGeneralResult struct {
     StrategyName  string          // "Fixed-Percent-5%"
-    StrategyType  string          // "Fixed" or "Timed"  
+    StrategyType  string          // "Fixed" or "Debounced"  
     Triggered     bool            // true if threshold hit
     TriggerType   string          // "StopLoss" or "TakeProfit"
     LastPrice     decimal.Decimal // Current price
     Stat          StrategyStat    // Contains PriceThreshold
     LastTime      time.Time       // Update timestamp
-    TimeThreshold time.Duration   // For timed strategies
+    TimeThreshold time.Duration   // For Debounced strategies
     Error         error           // Any processing error
 }
 ```
@@ -112,12 +112,12 @@ Used for combined stop loss AND take profit strategies:
 ```go
 type StrategyHybridResult struct {
     StrategyName  string          // "Risk-Reward-1:2"
-    StrategyType  string          // "Fixed" or "Timed"
+    StrategyType  string          // "Fixed" or "Debounced"
     Triggered     bool            // true if either SL or TP hit
     TriggerType   string          // "Hybrid"
     LastTime      time.Time       // Update timestamp
     LastPrice     decimal.Decimal // Current price
-    TimeThreshold time.Duration   // For timed strategies
+    TimeThreshold time.Duration   // For Debounced strategies
     stopStat      StrategyStat    // Stop loss threshold
     profitStat    StrategyStat    // Take profit threshold
     Error         error           // Any processing error

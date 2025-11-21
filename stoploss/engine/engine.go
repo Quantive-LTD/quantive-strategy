@@ -86,16 +86,16 @@ func (csm *StrategyEngine) RegisterStrategy(name string, strategy interface{}) e
 	switch s := strategy.(type) {
 	case stoploss.FixedStopLoss:
 		csm.portfolio.RegistFixedStoplossStrategy(name, s)
-	case stoploss.TimeBasedStopLoss:
-		csm.portfolio.RegistTimedStoplossStrategy(name, s)
+	case stoploss.DebouncedStopLoss:
+		csm.portfolio.RegistDebouncedStoplossStrategy(name, s)
 	case stoploss.FixedTakeProfit:
 		csm.portfolio.RegistFixedTakeProfitStrategy(name, s)
-	case stoploss.TimeBasedTakeProfit:
-		csm.portfolio.RegistTimedTakeProfitStrategy(name, s)
+	case stoploss.DebouncedTakeProfit:
+		csm.portfolio.RegistDebouncedTakeProfitStrategy(name, s)
 	case stoploss.HybridWithoutTime:
-		csm.portfolio.RegistHybridStrategy(name, s)
+		csm.portfolio.RegistHybridFixedStrategy(name, s)
 	case stoploss.HybridWithTime:
-		csm.portfolio.RegistHybridTimedStrategy(name, s)
+		csm.portfolio.RegistHybridDebouncedStrategy(name, s)
 	default:
 		return errNonsupported
 	}
@@ -114,10 +114,10 @@ func (csm *StrategyEngine) Start() error {
 			csm.handleFixedStopLoss(ctx)
 		}, nil)
 	}
-	if len(csm.portfolio.timedStoplossStrategies) > 0 {
+	if len(csm.portfolio.DebouncedStoplossStrategies) > 0 {
 		goroutineCount++
 		csm.engine.SafeGo(func(ctx context.Context) {
-			csm.handleTimedStopLoss(ctx)
+			csm.handleDebouncedStopLoss(ctx)
 		}, nil)
 	}
 	if len(csm.portfolio.fixedTakeProfitStrategies) > 0 {
@@ -126,10 +126,10 @@ func (csm *StrategyEngine) Start() error {
 			csm.handleFixedProfit(ctx)
 		}, nil)
 	}
-	if len(csm.portfolio.timedTakeProfitStrategies) > 0 {
+	if len(csm.portfolio.DebouncedTakeProfitStrategies) > 0 {
 		goroutineCount++
 		csm.engine.SafeGo(func(ctx context.Context) {
-			csm.handleTimedProfit(ctx)
+			csm.handleDebouncedProfit(ctx)
 		}, nil)
 	}
 	if len(csm.portfolio.hybridFixedStrategies) > 0 {
@@ -138,10 +138,10 @@ func (csm *StrategyEngine) Start() error {
 			csm.handleFixedHybrid(ctx)
 		}, nil)
 	}
-	if len(csm.portfolio.hybridTimedStrategies) > 0 {
+	if len(csm.portfolio.hybridDebouncedStrategies) > 0 {
 		goroutineCount++
 		csm.engine.SafeGo(func(ctx context.Context) {
-			csm.handleTimedHybrid(ctx)
+			csm.handleDebouncedHybrid(ctx)
 		}, nil)
 	}
 
@@ -202,18 +202,18 @@ func (csm *StrategyEngine) handleFixedStopLoss(ctx context.Context) {
 	}
 }
 
-func (csm *StrategyEngine) handleTimedStopLoss(ctx context.Context) {
+func (csm *StrategyEngine) handleDebouncedStopLoss(ctx context.Context) {
 	ticker := time.NewTicker(csm.Config.HeartbeatInterval)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("[handleTimedStopLoss] stopped")
+			log.Println("[handleDebouncedStopLoss] stopped")
 			return
-		case update := <-csm.execution.timedStoplossChannel:
-			csm.processTimedStopStrategies(update, ctx)
+		case update := <-csm.execution.DebouncedStoplossChannel:
+			csm.processDebouncedStopStrategies(update, ctx)
 		case <-ticker.C:
-			log.Println("[handleTimedStopLoss] heartbeat")
+			log.Println("[handleDebouncedStopLoss] heartbeat")
 			continue
 		}
 	}
@@ -236,18 +236,18 @@ func (csm *StrategyEngine) handleFixedProfit(ctx context.Context) {
 	}
 }
 
-func (csm *StrategyEngine) handleTimedProfit(ctx context.Context) {
+func (csm *StrategyEngine) handleDebouncedProfit(ctx context.Context) {
 	ticker := time.NewTicker(csm.Config.HeartbeatInterval)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("[handleTimedProfit] stopped")
+			log.Println("[handleDebouncedProfit] stopped")
 			return
-		case update := <-csm.execution.timedTakeProfitChannel:
-			csm.processTimedProfitStrategies(update, ctx)
+		case update := <-csm.execution.DebouncedTakeProfitChannel:
+			csm.processDebouncedProfitStrategies(update, ctx)
 		case <-ticker.C:
-			log.Println("[handleTimedProfit] heartbeat")
+			log.Println("[handleDebouncedProfit] heartbeat")
 			continue
 		}
 	}
@@ -270,18 +270,18 @@ func (csm *StrategyEngine) handleFixedHybrid(ctx context.Context) {
 	}
 }
 
-func (csm *StrategyEngine) handleTimedHybrid(ctx context.Context) {
+func (csm *StrategyEngine) handleDebouncedHybrid(ctx context.Context) {
 	ticker := time.NewTicker(csm.Config.HeartbeatInterval)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("[handleTimedHybrid] stopped")
+			log.Println("[handleDebouncedHybrid] stopped")
 			return
-		case update := <-csm.execution.hybridTimedChannel:
-			csm.processHybridTimedStrategies(update, ctx)
+		case update := <-csm.execution.hybridDebouncedChannel:
+			csm.processHybridDebouncedStrategies(update, ctx)
 		case <-ticker.C:
-			log.Println("[handleTimedHybrid] heartbeat")
+			log.Println("[handleDebouncedHybrid] heartbeat")
 			continue
 		}
 	}
@@ -311,14 +311,14 @@ func (csm *StrategyEngine) processFixedStopStrategies(update model.PricePoint, c
 	}
 }
 
-func (csm *StrategyEngine) processTimedStopStrategies(update model.PricePoint, ctx context.Context) {
-	strategies := csm.portfolio.GetTimedStoplossStrategies()
+func (csm *StrategyEngine) processDebouncedStopStrategies(update model.PricePoint, ctx context.Context) {
+	strategies := csm.portfolio.GetDebouncedStoplossStrategies()
 	for name, strategy := range strategies {
 		timeThreshold, _ := strategy.GetTimeThreshold()
 		shouldTrigger, err := strategy.ShouldTriggerStopLoss(update.NewPrice, update.UpdatedAt.UnixMilli())
 		newThreshold, calcErr := strategy.CalculateStopLoss(update.NewPrice)
 		if calcErr == nil {
-			result := result.NewGeneral(name, model.TIMED, model.STOP_LOSS, update.NewPrice, newThreshold, update.UpdatedAt, time.Duration(timeThreshold))
+			result := result.NewGeneral(name, model.DEBUNCED, model.STOP_LOSS, update.NewPrice, newThreshold, update.UpdatedAt, time.Duration(timeThreshold))
 			if err == nil {
 				result.SetTriggered(shouldTrigger)
 			} else {
@@ -328,7 +328,7 @@ func (csm *StrategyEngine) processTimedStopStrategies(update model.PricePoint, c
 			case csm.execution.generalResults <- *result:
 				// successfully sent
 			case <-time.After(csm.Config.ReadTimeout):
-				csm.Metrics.RecordChannelTimeout(model.TIMED, model.STOP_LOSS)
+				csm.Metrics.RecordChannelTimeout(model.DEBUNCED, model.STOP_LOSS)
 			case <-ctx.Done():
 				return
 			}
@@ -360,14 +360,14 @@ func (csm *StrategyEngine) processFixedProfitStrategies(update model.PricePoint,
 	}
 }
 
-func (csm *StrategyEngine) processTimedProfitStrategies(update model.PricePoint, ctx context.Context) {
-	strategies := csm.portfolio.GetTimedTakeProfitStrategies()
+func (csm *StrategyEngine) processDebouncedProfitStrategies(update model.PricePoint, ctx context.Context) {
+	strategies := csm.portfolio.GetDebouncedTakeProfitStrategies()
 	for name, strategy := range strategies {
 		timeThreshold, _ := strategy.GetTimeThreshold()
 		shouldTrigger, err := strategy.ShouldTriggerTakeProfit(update.NewPrice, update.UpdatedAt.UnixMilli())
 		newThreshold, calcErr := strategy.CalculateTakeProfit(update.NewPrice)
 		if calcErr == nil {
-			result := result.NewGeneral(name, model.TIMED, model.TAKE_PROFIT, update.NewPrice, newThreshold, update.UpdatedAt, time.Duration(timeThreshold))
+			result := result.NewGeneral(name, model.DEBUNCED, model.TAKE_PROFIT, update.NewPrice, newThreshold, update.UpdatedAt, time.Duration(timeThreshold))
 			if err == nil {
 				result.SetTriggered(shouldTrigger)
 			} else {
@@ -377,7 +377,7 @@ func (csm *StrategyEngine) processTimedProfitStrategies(update model.PricePoint,
 			case csm.execution.generalResults <- *result:
 				// successfully sent
 			case <-time.After(csm.Config.ReadTimeout):
-				csm.Metrics.RecordChannelTimeout(model.TIMED, model.TAKE_PROFIT)
+				csm.Metrics.RecordChannelTimeout(model.DEBUNCED, model.TAKE_PROFIT)
 			case <-ctx.Done():
 				return
 			}
@@ -415,14 +415,14 @@ func (csm *StrategyEngine) processHybridFixedStrategies(update model.PricePoint,
 	}
 }
 
-func (csm *StrategyEngine) processHybridTimedStrategies(update model.PricePoint, ctx context.Context) {
+func (csm *StrategyEngine) processHybridDebouncedStrategies(update model.PricePoint, ctx context.Context) {
 	strategies := csm.portfolio.GetHybridStrategies()
 	for name, strategy := range strategies {
 		shouldTriggerSL, errSL := strategy.ShouldTriggerStopLoss(update.NewPrice)
 		shouldTriggerTP, errTP := strategy.ShouldTriggerTakeProfit(update.NewPrice)
 		newStop, newProfit, calcErr := strategy.Calculate(update.NewPrice)
 		if calcErr == nil {
-			result := result.NewHybrid(name, model.HYBRID_TIMED, update.NewPrice, newStop, newProfit, update.UpdatedAt, time.Duration(0))
+			result := result.NewHybrid(name, model.HYBRID_DEBUNCED, update.NewPrice, newStop, newProfit, update.UpdatedAt, time.Duration(0))
 			if errSL == nil && shouldTriggerSL {
 				result.SetTriggered(true, model.STOP_LOSS)
 			} else if errTP == nil && shouldTriggerTP {
@@ -437,7 +437,7 @@ func (csm *StrategyEngine) processHybridTimedStrategies(update model.PricePoint,
 			case csm.execution.hybridResults <- *result:
 				// successfully sent
 			case <-time.After(csm.Config.ReadTimeout):
-				csm.Metrics.RecordChannelTimeout(model.HYBRID_TIMED, "")
+				csm.Metrics.RecordChannelTimeout(model.HYBRID_DEBUNCED, "")
 			case <-ctx.Done():
 				return
 			}
@@ -451,20 +451,20 @@ func (csm *StrategyEngine) Collect(pricePoint model.PricePoint, callback func())
 	if len(csm.portfolio.fixedStoplossStrategies) > 0 {
 		dataFeedWithMetrics(pricePoint, csm.execution.fixedStoplossChannel, model.FIXED, model.STOP_LOSS, csm.Metrics, callback)
 	}
-	if len(csm.portfolio.timedStoplossStrategies) > 0 {
-		dataFeedWithMetrics(pricePoint, csm.execution.timedStoplossChannel, model.TIMED, model.STOP_LOSS, csm.Metrics, callback)
+	if len(csm.portfolio.DebouncedStoplossStrategies) > 0 {
+		dataFeedWithMetrics(pricePoint, csm.execution.DebouncedStoplossChannel, model.DEBUNCED, model.STOP_LOSS, csm.Metrics, callback)
 	}
 	if len(csm.portfolio.fixedTakeProfitStrategies) > 0 {
 		dataFeedWithMetrics(pricePoint, csm.execution.fixedTakeProfitChannel, model.FIXED, model.TAKE_PROFIT, csm.Metrics, callback)
 	}
-	if len(csm.portfolio.timedTakeProfitStrategies) > 0 {
-		dataFeedWithMetrics(pricePoint, csm.execution.timedTakeProfitChannel, model.TIMED, model.TAKE_PROFIT, csm.Metrics, callback)
+	if len(csm.portfolio.DebouncedTakeProfitStrategies) > 0 {
+		dataFeedWithMetrics(pricePoint, csm.execution.DebouncedTakeProfitChannel, model.DEBUNCED, model.TAKE_PROFIT, csm.Metrics, callback)
 	}
 	if len(csm.portfolio.hybridFixedStrategies) > 0 {
 		dataFeedWithMetrics(pricePoint, csm.execution.hybridFixedChannel, model.HYBRID_FIXED, "", csm.Metrics, callback)
 	}
-	if len(csm.portfolio.hybridTimedStrategies) > 0 {
-		dataFeedWithMetrics(pricePoint, csm.execution.hybridTimedChannel, model.HYBRID_TIMED, "", csm.Metrics, callback)
+	if len(csm.portfolio.hybridDebouncedStrategies) > 0 {
+		dataFeedWithMetrics(pricePoint, csm.execution.hybridDebouncedChannel, model.HYBRID_DEBUNCED, "", csm.Metrics, callback)
 	}
 }
 

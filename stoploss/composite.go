@@ -25,11 +25,11 @@ const (
 )
 
 type Composite struct {
-	mode        TriggerMode
-	fixedStop   []FixedStopLoss
-	fixedProfit []FixedTakeProfit
-	timedStop   []TimeBasedStopLoss
-	timedProfit []TimeBasedTakeProfit
+	mode            TriggerMode
+	fixedStop       []FixedStopLoss
+	fixedProfit     []FixedTakeProfit
+	DebouncedStop   []DebouncedStopLoss
+	DebouncedProfit []DebouncedTakeProfit
 }
 
 func NewComposite(mode TriggerMode) *Composite {
@@ -38,9 +38,9 @@ func NewComposite(mode TriggerMode) *Composite {
 	}
 }
 
-func (c *Composite) AddTimed(cond1 TimeBasedStopLoss, cond2 TimeBasedTakeProfit) {
-	c.timedStop = append(c.timedStop, cond1)
-	c.timedProfit = append(c.timedProfit, cond2)
+func (c *Composite) AddDebounced(cond1 DebouncedStopLoss, cond2 DebouncedTakeProfit) {
+	c.DebouncedStop = append(c.DebouncedStop, cond1)
+	c.DebouncedProfit = append(c.DebouncedProfit, cond2)
 }
 
 func (c *Composite) AddFixed(cond1 FixedStopLoss, cond2 FixedTakeProfit) {
@@ -50,7 +50,7 @@ func (c *Composite) AddFixed(cond1 FixedStopLoss, cond2 FixedTakeProfit) {
 
 func (c *Composite) ShouldTriggerStopLoss(currentPrice decimal.Decimal, timestamp int64) bool {
 	count := 0
-	total := len(c.fixedStop) + len(c.timedStop)
+	total := len(c.fixedStop) + len(c.DebouncedStop)
 
 	for _, cond := range c.fixedStop {
 		if triggered, _ := cond.ShouldTriggerStopLoss(currentPrice); triggered {
@@ -63,7 +63,7 @@ func (c *Composite) ShouldTriggerStopLoss(currentPrice decimal.Decimal, timestam
 		}
 	}
 
-	for _, cond := range c.timedStop {
+	for _, cond := range c.DebouncedStop {
 		if triggered, _ := cond.ShouldTriggerStopLoss(currentPrice, timestamp); triggered {
 			if c.mode == TriggerAny {
 				return true
@@ -78,7 +78,7 @@ func (c *Composite) ShouldTriggerStopLoss(currentPrice decimal.Decimal, timestam
 
 func (c *Composite) ShouldTriggerTakeProfit(currentPrice decimal.Decimal, timestamp int64) bool {
 	count := 0
-	total := len(c.fixedProfit) + len(c.timedProfit)
+	total := len(c.fixedProfit) + len(c.DebouncedProfit)
 	for _, cond := range c.fixedProfit {
 		if triggered, _ := cond.ShouldTriggerTakeProfit(currentPrice); triggered {
 			if c.mode == TriggerAny {
@@ -90,7 +90,7 @@ func (c *Composite) ShouldTriggerTakeProfit(currentPrice decimal.Decimal, timest
 		}
 	}
 
-	for _, cond := range c.timedProfit {
+	for _, cond := range c.DebouncedProfit {
 		if triggered, _ := cond.ShouldTriggerTakeProfit(currentPrice, timestamp); triggered {
 			if c.mode == TriggerAny {
 				return true
@@ -148,7 +148,7 @@ func (c *Composite) getStopLoss(
 		}
 	}
 
-	for _, cond := range c.timedStop {
+	for _, cond := range c.DebouncedStop {
 		stop, err := cond.GetStopLoss()
 		if err != nil {
 			continue
@@ -182,7 +182,7 @@ func (c *Composite) getTakeProfit(
 		}
 	}
 
-	for _, cond := range c.timedProfit {
+	for _, cond := range c.DebouncedProfit {
 		take, err := cond.GetTakeProfit()
 		if err != nil {
 			continue

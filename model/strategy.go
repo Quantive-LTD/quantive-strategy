@@ -3,10 +3,10 @@ package model
 type StrategyType string
 
 const (
-	FIXED        StrategyType = "Fixed"
-	TIMED        StrategyType = "Timed"
-	HYBRID_TIMED StrategyType = "Hybrid-Timed"
-	HYBRID_FIXED StrategyType = "Hybrid-Fixed"
+	FIXED           StrategyType = "Fixed"
+	DEBUNCED        StrategyType = "Debounced"
+	HYBRID_DEBUNCED StrategyType = "Hybrid-Debounced"
+	HYBRID_FIXED    StrategyType = "Hybrid-Fixed"
 )
 
 func (st StrategyType) String() string {
